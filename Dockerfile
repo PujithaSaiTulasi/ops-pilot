@@ -15,10 +15,11 @@ COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 COPY scenarios ./scenarios
 COPY data/runbooks ./data/runbooks
+COPY evals/cases.json ./evals/cases.json
 
 RUN pip install --no-cache-dir . \
-    && mkdir -p /app/data \
-    && chown -R opspilot:opspilot /app/data
+    && mkdir -p /app/data /app/evals/results \
+    && chown -R opspilot:opspilot /app/data /app/evals/results
 
 USER opspilot
 

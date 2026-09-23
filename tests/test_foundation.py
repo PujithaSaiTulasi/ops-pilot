@@ -6,6 +6,11 @@ import re
 from pathlib import Path
 
 import yaml
+from fastapi.testclient import TestClient
+
+from opspilot.config import Settings
+from opspilot.services.common import create_service_app
+from opspilot.simulator.store import FaultStore
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -118,6 +123,33 @@ def test_compose_override_enables_dev_reload() -> None:
     command = " ".join(str(part) for part in override["services"]["api"]["command"])
 
     assert "--reload" in command
+
+
+def test_compose_has_no_duplicate_published_ports() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "docker-compose.yml").read_text())
+    published = [
+        port.rsplit(":", 1)[0]
+        for service in compose["services"].values()
+        for port in service.get("ports", [])
+    ]
+    assert len(published) == len(set(published))
+
+
+def test_compose_service_probes_match_service_routes() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "docker-compose.yml").read_text())
+    for service_name in ("checkout", "payment", "inventory"):
+        probe = compose["services"][service_name]["healthcheck"]["test"][-1]
+        match = re.search(r"http://127\.0\.0\.1:8000([^']+)", probe)
+        assert match is not None
+        app = create_service_app(
+            service_name,
+            "/traffic",
+            "1.0.0",
+            settings=Settings(_env_file=None, environment="test"),
+            store=FaultStore(),
+        )
+        with TestClient(app) as client:
+            assert client.get(match.group(1)).status_code == 200
 
 
 def test_prometheus_scrapes_the_api() -> None:

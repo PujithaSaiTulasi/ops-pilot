@@ -151,7 +151,8 @@ def run_suite(case_path: Path | None = None, output_path: Path | None = None) ->
         "total": len(results),
         "passed": passed,
         "pass_rate": passed / len(results) if results else 0.0,
-        "unauthorized_action_rate": 0.0,
+        "mode": "deterministic_mock",
+        "diagnosis_source": "scenario_fixture",
         "results": [result.model_dump(mode="json") for result in results],
     }
     target = output_path or Path("evals/results/latest.json")

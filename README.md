@@ -1,195 +1,135 @@
 # OpsPilot
 
-**An agentic incident-response platform.** OpsPilot investigates simulated
-production incidents end-to-end: an LLM agent reads live signals through MCP
-tool servers, reasons about root cause, and proposes remediations — behind
-guardrails, human approval, audit logs, structured observability, and
-repeatable evaluations.
+A local incident-response prototype for learning MCP tools, bounded agent
+workflows, approval gates, and evaluation. Three small FastAPI services simulate
+checkout, payment, and inventory incidents. No production integration is required.
 
-> **Status: core implementation complete.** The deterministic test suite,
-> evaluation suite, lint/type checks, Compose validation, and local remediation
-> demo all run without production credentials.
+## What works today
 
-## Principles
+- Six scenario fixtures and fault injection through the CLI or HTTP API.
+- Five MCP server modules exposing simulator evidence, deployment fixtures,
+  runbooks, remediation tools, and local incident records.
+- A bounded investigation loop with a scripted mock model by default and an
+  optional OpenAI Responses adapter for tool selection.
+- A manual approval workflow for the `bad_deployment` rollback demo, with a
+  separate simulator-state recovery check and a JSONL audit trail.
+- Ten deterministic regression cases, pytest, lint/type checks, and GitHub CI.
+- Docker Compose configuration for services, Redis, Prometheus, Grafana,
+  OpenTelemetry Collector, and Jaeger.
 
-- **Read-only vs. side-effecting tools are separated.** Observability tools can
-  run freely; anything that mutates state (rollback, restart, deploy, delete,
-  notify) passes through an approval gate.
-- **Humans approve the dangerous parts.** No rollback, restart, deployment,
-  deletion, or external notification happens without explicit human approval.
-- **Every action is auditable.** Decisions, tool calls, approvals, and denials
-  are recorded in an append-only audit log.
-- **Deterministic by default.** Mock LLM mode gives reproducible agent
-  behaviour with no API key and no network — CI never needs credentials.
-- **No production credentials, ever.** All configuration comes from
-  environment variables (`.env.example` documents every variable; `.env` is
-  gitignored).
+## Current limits
 
-## Architecture
+This is a prototype, not a production incident-response system. The investigation
+currently fills the final diagnosis from the selected scenario's expected answer,
+including in live-model mode. MCP evidence is generated from simulator state;
+it does not query Prometheus or Jaeger. A passing evaluation therefore measures
+fixture/workflow consistency, not independent LLM diagnosis accuracy.
 
-```
-                     ┌─────────────────────────────────────────────────┐
-                     │            OpsPilot API (FastAPI)              │
-                     │ /healthz  /simulate/*  /alerts  /metrics        │
-                     └───────────────┬─────────────────────────────────┘
-                                     │
-        ┌────────────────────────────┼──────────────────────────────┐
-        │                            │                              │
-┌───────▼────────┐         ┌─────────▼──────────┐         ┌─────────▼─────────┐
-│   Incident     │ inject  │    Agent Core      │ request │  Approval Gate    │
-│   Simulator    ├────────▶│  (investigation    ├────────▶│ (human-in-the-    │
-│  (scenarios/)  │         │   loop + LLM/mock) │  danger │  loop)            │
-└────────────────┘         └───┬────────────┬───┘         └─────────┬─────────┘
-                               │            │                       │
-                    read-only  │            │ side-effecting        │ approved?
-                    tools      │            │ tools                 │
-                 ┌─────────────▼──┐   ┌─────▼─────────────┐  ┌──────▼──────────┐
-                 │ MCP: metrics,  │   │ MCP: rollback,    │  │  Audit Log      │
-                 │ logs, deploys, │   │ restart, deploy,  │  │  JSONL audit    │
-                 │ traces (free)  │   │ delete, notify    │  │    log          │
-                 └────────────────┘   │ (approval-gated)  │  └─────────────────┘
-                                      └───────────────────┘
-   Observability across every layer: JSON logs · Prometheus · OpenTelemetry
-```
+Approval enforcement is in the remediation workflow. The low-level remediation
+tools only require a nonempty approval ID and do not authenticate it themselves.
+Recovery checks whether simulator faults remain; it does not measure post-fix
+traffic or latency. The full remediation workflow supports `bad_deployment` only.
+Deploy, delete, and notification tools are not implemented.
 
-**Investigation flow:**
-
-1. `make inject SCENARIO=bad_deployment` seeds a deterministic incident.
-2. `make investigate` runs the agent loop: plan → tool calls → observations.
-3. Read-only tools execute freely; side-effecting tools pause for approval.
-4. Every step is written to the audit log and emitted as structured logs/traces.
-5. `make eval` scores the resulting investigation against the scenario's ground
-   truth (root cause, signals cited, remediation correctness).
-
-## Tech stack
-
-| Layer          | Choice                                                    |
-| -------------- | --------------------------------------------------------- |
-| Runtime        | Python 3.12                                               |
-| API            | FastAPI + Uvicorn                                         |
-| Schemas        | Pydantic v2 (typed schemas for every tool and payload)    |
-| Agent I/O      | Official MCP Python SDK + official OpenAI Python SDK      |
-| Local state    | JSON approval store + append-only JSONL audit log          |
-| Shared state   | Redis-backed simulator with an in-memory test fallback     |
-| Metrics        | Prometheus + `/metrics`                                   |
-| Traces         | OpenTelemetry → local OTLP collector                      |
-| Logs           | JSON structured logging (stdlib, one object per line)     |
-| Tests          | pytest + pytest-cov                                       |
-| Lint/type      | ruff (lint + format) + mypy                               |
-| Packaging      | Docker + Docker Compose                                   |
+See [architecture](docs/architecture.md) and the [threat model](docs/threat-model.md)
+for the implemented boundaries and remaining work.
 
 ## Quickstart
 
+Run from the repository root with Python 3.12:
+
 ```bash
-cp .env.example .env   # mock mode is ON by default — no API key needed
-make install           # Python 3.12 venv + dependencies
-make test              # run the test-suite with coverage
-make lint              # ruff lint, ruff format check, mypy
-make up                # API, simulated services, Redis, and local observability
+make install
+make test
+make lint
+make eval
+MOCK_LLM=true REDIS_URL= OTEL_TRACES_EXPORTER=none make demo
 ```
 
-Open:
+The last command runs entirely within one process, injects the checkout fault,
+automatically approves the local demo action, and checks the resulting simulator
+state. It requires neither Docker nor an API key. It is not the manual approval
+path.
 
-- API: <http://localhost:8000> (docs at `/docs`, probe at `/healthz`)
-- Prometheus: <http://localhost:9090>
-- Grafana: <http://localhost:3000>
-- Jaeger: <http://localhost:16686>
+Optionally copy `.env.example` to `.env` for local settings. Keep an existing
+`.env` and any credentials private; both Git and the Docker build ignore it.
 
-To inject and inspect a deterministic incident locally:
+For manual approval across separate CLI commands, start Redis first:
 
 ```bash
+docker compose up -d redis
 make inject SCENARIO=bad_deployment
-make state
-make reset
+make remediate INCIDENT=bad_deployment
+# Replace APR-... below with the approval ID returned by remediate.
+make approve APPROVAL_ID=APR-...
+make resume APPROVAL_ID=APR-...
 ```
 
-To use a real model instead of mock mode, set `MOCK_LLM=false` and provide
-`OPENAI_API_KEY` in `.env` (never commit it).
+Redis shares faults across processes. Without a reachable Redis server, faults
+fall back to memory and disappear when a CLI process exits. Approvals and audit
+events are local files under `data/`.
 
-## Make targets
+## Local service stack
 
-| Command                          | What it does                                            |
-| -------------------------------- | ------------------------------------------------------- |
-| `make install`                   | Create `.venv` (Python 3.12) and install `.[dev]`       |
-| `make up`                        | Build and start the full Compose stack                  |
-| `make down`                      | Stop the stack (volumes preserved)                      |
-| `make test`                      | pytest with coverage                                    |
-| `make lint`                      | ruff check, ruff format check, mypy                     |
-| `make inject SCENARIO=bad_deployment` | Inject a simulated incident                        |
-| `make investigate`               | Run the agent investigation loop                        |
-| `make eval`                      | Run the evaluation suite                                |
-| `make clean`                     | Remove caches/build artifacts (keeps `.venv` and data)  |
+```bash
+make up
+```
 
-`inject`, `investigate`, `eval`, and `demo` run in deterministic mock mode by
-default, so the repository can be evaluated without credentials.
+| Service | Local address |
+| --- | --- |
+| API documentation | <http://localhost:8000/docs> |
+| Checkout health | <http://localhost:8001/health> |
+| Payment health | <http://localhost:8002/health> |
+| Inventory health | <http://localhost:8003/health> |
+| Prometheus | <http://localhost:9090> |
+| Grafana | <http://localhost:3000> |
+| Jaeger | <http://localhost:16686> |
+
+The control API exposes `/healthz`, `/version`, `/metrics`, `/simulate/scenarios`,
+`/simulate/inject`, `/simulate/reset`, `/simulate/state`, `/alerts`, and
+`/alerts/webhook`. Receiving an alert records it; it does not start an investigation.
+The agent and approvals are currently operated through the CLI.
+
+Generate service traffic with `curl http://localhost:8001/checkout`. Prometheus
+scrapes actual service metrics and the collector forwards service traces to
+Jaeger. These dashboards are separate from the agent's fixture-based evidence.
+See the [demo guide](docs/demo.md) for more commands.
 
 ## Configuration
 
-All settings are typed in [`src/opspilot/config.py`](src/opspilot/config.py)
-and read from environment variables. Every variable is documented in
-[`.env.example`](.env.example); tests assert that file stays valid and
-secret-free.
+Settings are declared in [config.py](src/opspilot/config.py); example environment
+values are in [.env.example](.env.example).
 
-Key switches:
+| Setting | Purpose |
+| --- | --- |
+| `MOCK_LLM` | Defaults to `true`; uses the scripted model |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | Needed for live tool selection; live calls can incur costs |
+| `REDIS_URL` | Shared simulator state; empty means process-local memory |
+| `MAX_INVESTIGATION_STEPS` | Enforced investigation loop limit |
+| `APPROVAL_STORE_PATH` | Local JSON approval records |
+| `AUDIT_LOG_PATH` | Local JSONL event log |
+| `OTEL_TRACES_EXPORTER` | Set to `none` to disable trace export |
 
-| Variable          | Default                  | Purpose                                    |
-| ----------------- | ------------------------ | ------------------------------------------ |
-| `MOCK_LLM`        | `true`                   | Deterministic agent, no API key/network    |
-| `OPENAI_API_KEY`  | *(empty)*                | Only needed when `MOCK_LLM=false`          |
-| `LOG_FORMAT`      | `json`                   | `json` for machines, `console` for humans  |
-| `REQUIRE_APPROVAL_FOR` | rollback, restart, deploy, delete, notify | Approval-gated actions      |
+Compose uses its internal Redis and collector hostnames; the sample `.env`
+localhost addresses are for commands running on your host. Several settings are
+still reserved and do not enforce behavior, as marked in `.env.example`.
 
 ## Repository layout
 
-```
-ops-pilot/
-├── Makefile                  # install / up / down / test / lint / inject / ...
-├── pyproject.toml            # deps, pytest, ruff, mypy, coverage config
-├── docker-compose.yml        # API, simulated services, Redis, and observability
-├── docker-compose.override.yml  # dev hot-reload
-├── Dockerfile                # python:3.12-slim, non-root, healthcheck
-├── .env.example              # every env var, no secrets
-├── ops/                      # Prometheus, Grafana, OTEL, MCP registry
-├── docs/                     # architecture, demo, and threat model
-├── RESUME.md                 # resume bullet and interview talking points
-├── scenarios/                # simulated incidents (YAML)
-├── data/                     # runbooks plus local ignored runtime state
-├── src/opspilot/
-│   ├── config.py             # typed environment settings
-│   ├── logging.py            # JSON structured logging
-│   ├── cli.py                # CLI entry point
-│   ├── api/                  # FastAPI app factory
-│   ├── agent/                # investigation and remediation workflows
-│   ├── mcp/                  # MCP server integrations
-│   ├── guardrails/           # input, tool, and output policy checks
-│   ├── approval/             # human-in-the-loop gate
-│   ├── audit/                # append-only audit log
-│   ├── llm/                  # OpenAI Responses + mock mode
-│   ├── simulator/            # incident injection and shared state
-│   ├── evals/                # deterministic evaluation suite
-│   └── observability/        # metrics, alerts, and traces
-└── tests/                    # pytest suite for every component
+```text
+src/opspilot/        Python package: API, services, simulator, MCP, agent,
+                    approvals, guardrails, audit, model adapters, evaluations
+tests/              Automated tests
+scenarios/          YAML incident fixtures
+data/runbooks/      Checked-in runbooks (runtime state in data/ is ignored)
+evals/cases.json     Regression cases; generated results are ignored
+ops/                Prometheus, Grafana, collector, and MCP launch configuration
+docs/               Architecture, demo instructions, and threat model
+.github/workflows/  CI verification
 ```
 
-## Safety
+`make help` lists available commands. `make down` stops the stack while preserving
+volumes. `make eval` fails below an 80% case pass rate. Use [RESUME.md](RESUME.md)
+for an accurate project description and interview talking points.
 
-- Simulated incidents only — no connections to real production systems.
-- No credentials in the repo; secrets come from the environment.
-- `.env` is gitignored and `.dockerignore` keeps it out of images.
-- Approval gating and the audit log are structural requirements, not options.
-
-## Roadmap
-
-1. ✅ Foundation — structure, config, Compose, Makefile, tests.
-2. ✅ Incident simulator + scenario schema.
-3. ✅ MCP servers + typed tool registry.
-4. ✅ LLM client with deterministic mock mode + investigation loop.
-5. ✅ Guardrails + human approval gate + audit log.
-6. ✅ Approval-gated remediation and independent recovery verification.
-7. ✅ Prometheus, OpenTelemetry, Grafana, Jaeger, and alerts.
-8. ✅ Evaluation suite with scenario scoring.
-9. ✅ CI, architecture docs, threat model, demo guide, and resume notes.
-
-## License
-
-MIT — see [`LICENSE`](./LICENSE).
+MIT license; see [LICENSE](LICENSE).

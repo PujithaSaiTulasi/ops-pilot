@@ -94,8 +94,10 @@ def test_env_example_covers_every_documented_setting() -> None:
     assert len(keys) == len(set(keys)), ".env.example contains duplicate keys"
 
 
-def test_env_example_parses_into_settings() -> None:
+def test_env_example_parses_into_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     """The shipped `.env.example` must be valid configuration as-is."""
+    monkeypatch.delenv("APPROVAL_STORE_PATH")
+    monkeypatch.delenv("AUDIT_LOG_PATH")
     settings = Settings(_env_file=REPO_ROOT / ".env.example")
 
     assert settings.max_investigation_steps == 12

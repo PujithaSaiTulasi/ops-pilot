@@ -28,7 +28,7 @@ install: ## Create the Python 3.12 venv and install runtime + dev dependencies
 	@mkdir -p data
 	@echo "Installed. Activate with: source $(VENV)/bin/activate"
 
-up: ## Build and start the stack (api, postgres, redis, prometheus, otel-collector)
+up: ## Build and start the API, simulated services, Redis, and observability
 	$(COMPOSE) up -d --build
 
 down: ## Stop the stack (volumes are preserved)
@@ -51,8 +51,8 @@ reset: ## Reset all simulated incidents
 state: ## Show active simulated incidents
 	$(PY) -m opspilot.cli state
 
-investigate: ## Run the agent investigation loop against open incidents
-	$(PY) -m opspilot.cli investigate
+investigate: ## Investigate a scenario (make investigate INCIDENT=bad_deployment)
+	$(PY) -m opspilot.cli investigate --incident $(or $(INCIDENT),bad_deployment)
 
 eval: ## Run the evaluation suite
 	$(PY) -m opspilot.cli eval --suite default

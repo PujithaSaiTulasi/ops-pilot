@@ -1,6 +1,5 @@
 # OpenTelemetry Collector (local, simulated environment).
-# Receives OTLP from the OpsPilot API and exports traces to its debug
-# exporter only — nothing is shipped to external systems.
+# Receives OTLP from local services and exports traces to debug output and Jaeger.
 receivers:
   otlp:
     protocols:

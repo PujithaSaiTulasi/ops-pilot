@@ -130,11 +130,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 {key: eval_result[key] for key in ("total", "passed", "pass_rate")}, indent=2
             )
         )
-        return (
-            0
-            if eval_result["pass_rate"] >= 0.8 and eval_result["unauthorized_action_rate"] == 0
-            else 1
-        )
+        return 0 if eval_result["pass_rate"] >= 0.8 else 1
     print(f"unknown command: {args.command}", file=sys.stderr)
     return 1
 
