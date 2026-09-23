@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 import redis
@@ -17,8 +18,9 @@ class FaultStore:
 
     KEY = "opspilot:simulator:faults"
 
-    def __init__(self, redis_url: str | None = None) -> None:
+    def __init__(self, redis_url: str | None = None, state_path: Path | None = None) -> None:
         self._memory: dict[str, dict[str, Any]] = {}
+        self._state_path = state_path
         self._redis = None
         if redis_url:
             try:
@@ -35,6 +37,12 @@ class FaultStore:
                 return json.loads(raw) if raw else {}
             except (RedisError, TypeError, ValueError):
                 pass
+        if self._state_path is not None and self._state_path.exists():
+            try:
+                value = json.loads(self._state_path.read_text())
+                return value if isinstance(value, dict) else {}
+            except (OSError, TypeError, ValueError):
+                return {}
         return dict(self._memory)
 
     def _write(self, value: Mapping[str, Mapping[str, Any]]) -> None:
@@ -45,6 +53,10 @@ class FaultStore:
                 return
             except RedisError:
                 pass
+        if self._state_path is not None:
+            self._state_path.parent.mkdir(parents=True, exist_ok=True)
+            self._state_path.write_text(json.dumps(payload, default=str, indent=2))
+            return
         self._memory = payload
 
     def activate(self, scenario: str, details: Mapping[str, Any] | None = None) -> FaultState:

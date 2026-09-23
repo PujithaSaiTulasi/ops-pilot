@@ -16,6 +16,7 @@ COPY src ./src
 COPY scenarios ./scenarios
 COPY data/runbooks ./data/runbooks
 COPY evals/cases.json ./evals/cases.json
+COPY ops/mcp/servers.json ./ops/mcp/servers.json
 
 RUN pip install --no-cache-dir . \
     && mkdir -p /app/data /app/evals/results \

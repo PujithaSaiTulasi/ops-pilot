@@ -53,7 +53,7 @@ def create_service_app(
     app_settings = settings or Settings()
     configure_tracing(app_settings, service_name)
     tracer = trace.get_tracer(f"opspilot.simulator.{service_name}")
-    fault_store = store or FaultStore(app_settings.redis_url)
+    fault_store = store or FaultStore(app_settings.redis_url, app_settings.simulator_state_path)
     metrics = ServiceMetrics(service_name)
     app = FastAPI(title=service_name)
     app.state.fault_store = fault_store

@@ -28,3 +28,4 @@ jobs:
           docker build -t opspilot-ci .
           docker run --rm -e MOCK_LLM=true -e REDIS_URL= -e OTEL_TRACES_EXPORTER=none opspilot-ci python -m opspilot.cli demo
           docker run --rm opspilot-ci python -m opspilot.evals
+          docker run --rm -e MCP_TRANSPORT=stdio -e REDIS_URL= opspilot-ci python -m opspilot.cli mcp-discover

@@ -1,24 +1,26 @@
 # OpsPilot threat model
 
-This prototype assumes a trusted developer and a local simulator. Its HTTP and
-MCP entry points are not designed for untrusted or production access.
+OpsPilot treats model output, incident text, logs, and runbooks as untrusted
+inputs. The local simulator is trusted test infrastructure; the control plane
+and MCP servers are not yet hardened for internet exposure.
 
-| Area | Implemented behavior | Remaining limitation |
+| Threat | Current control | Remaining limitation |
 | --- | --- | --- |
-| Input | Rejects selected injection phrases and oversized user requests | Does not inspect every log/runbook tool result for injection |
-| Tool arguments | Agent checks service names, string lengths, and selected unsafe tokens | Direct MCP calls bypass the agent's checks |
-| Approval | Workflow checks a persisted approval decision before rollback | Direct tools accept any nonempty ID; no identity, expiry, or replay enforcement |
-| Investigation limits | Maximum iteration count | Tool timeout and per-step budget settings are currently unused |
-| Audit | Appends selected events to JSONL and redacts sensitive dictionary fields | Not tamper-proof, complete, or safe for concurrent writers; not all embedded secrets are detected |
-| Diagnosis | Requires evidence entries and flags risky recommendations | Root cause is copied from scenario ground truth, not independently inferred |
-| Recovery | Separate tool reads remaining simulator faults | No live health/latency verification and no service-specific fault filter |
-| Storage | Runtime records are excluded from Git and Docker images | Local files have no access-control or multi-writer transaction layer |
+| Prompt injection in a request | Input length limit and injection-pattern rejection | Detection is heuristic and request-focused |
+| Prompt injection in evidence | Evidence is kept as structured tool output and is not executable | Production adapters need content classification and provenance rules |
+| Unsafe tool arguments | Schema discovery, service allowlist, length/token checks | Production needs per-tenant policy and network allowlists |
+| Unauthorized mutation | Tool-level approval validation, exact argument matching, TTL, one-time consumption | Local approval identity is a demo user; no SSO/RBAC |
+| Approval replay or retargeting | Consumed status and canonical argument hash | JSON file has no transactional multi-writer locking |
+| Unbounded agent loop | LangGraph step limit and tool timeout | Per-step call budget remains future work |
+| Sensitive data in audit | Recursive redaction of sensitive keys | Production needs field classification, encryption, retention, and access control |
+| Audit tampering | Hash-linked JSONL records and chain verification | Local file is not an append-only production ledger |
+| False recovery | Independent simulator-state verification after remediation | No real traffic, latency, SLO window, or rollback health check |
+| MCP process compromise | Separate stdio processes and no shell tool exposed to the model | No mTLS, process sandbox, container isolation, or service identity |
 
-The `demo` command explicitly auto-approves its own local action. Use the manual
-approval sequence in the demo guide to inspect the pause/approve/resume path.
+The `demo` command auto-approves its own local action so the complete flow can
+run unattended. Use the manual approval flow in the demo guide to inspect the
+pause/approve/resume boundary.
 
-Production adapters would require authenticated tool-level authorization tied to
-the exact action, approval expiry and consumption, protected audit storage,
-untrusted-evidence handling, live telemetry-based diagnosis and verification,
-and regression cases measuring those properties. Existing eval pass rates should
-not be described as proof of production safety.
+For production, the next security steps are SSO/RBAC, short-lived credentials,
+transactional approval storage, authenticated MCP gateways, restricted
+executors, encrypted audit storage, signed images, and adversarial replay tests.

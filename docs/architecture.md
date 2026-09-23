@@ -1,58 +1,107 @@
 # OpsPilot architecture
 
-OpsPilot has a local simulator, a CLI investigation workflow, and a separate
-observability stack. They share scenario state, but the agent does not yet read
-live telemetry from the observability stack.
+OpsPilot is a local, production-shaped incident-response agent. It deliberately
+keeps the evidence and remediation backends deterministic so the workflow can
+be demonstrated and evaluated without access to a real production account.
 
-## Investigation and remediation
+## Request path
 
-1. The CLI or `/simulate/inject` activates a scenario in Redis, or in process-local
-   memory when Redis is unavailable.
-2. `MCPToolRegistry` constructs five server objects in-process, discovers their
-   schemas, and calls their SDK tool methods. `ops/mcp/servers.json` describes
-   standalone stdio entry points; the agent does not load that file or connect to
-   external MCP processes.
-3. The mock model follows a scripted evidence-gathering sequence. The optional
-   Responses adapter selects tools using a model. Both modes currently construct
-   the final diagnosis from scenario ground truth rather than model reasoning.
-4. `RemediationWorkflow` prepares a checkout rollback and persists a pending
-   approval. It checks the stored decision before invoking the rollback tool.
-   This workflow is specific to `bad_deployment`.
-5. The rollback clears the simulated deployment fault. A separate verification
-   tool checks whether any simulator faults remain; it does not probe service
-   traffic, deployment versions, or latency.
-6. Audit events append to JSONL; approvals and incident records use JSON files.
-   These stores have no database backend or multi-writer locking.
+```text
+simulated alert
+      |
+      v
+LangGraph: model -> MCP tools -> model -> diagnosis
+      |
+      v
+policy and approval gate
+      |
+      v
+approval-bound remediation MCP tool
+      |
+      v
+independent simulator recovery check + audit event
+```
 
-## MCP modules
+The investigation graph is implemented in
+`src/opspilot/agent/runtime.py`. Its state contains the incident, user request,
+observations, model decisions, tool events, and final diagnosis. The graph has
+three explicit nodes:
 
-| Server | Tools |
+| Node | Responsibility |
 | --- | --- |
-| Observability | Fixture metrics, logs, alerts, trace summaries, baseline comparison |
-| Deployments | Fixture versions, deployment history, changed files |
-| Runbooks | Local runbooks and past-incident guidance |
-| Remediation | Rollback plan, simulated rollback/restart, simulator-state verification |
-| Incidents | Read/create/update local records and add comments |
+| `model` | Ask the deterministic mock model or the optional Responses adapter what to do next |
+| `tool` | Validate the structured call, enforce timeout and approval policy, then call MCP |
+| `finalize` | Build an evidence-backed typed diagnosis and apply output guardrails |
 
-The agent classifies read-only and mutating tools. Direct calls to server objects
-do not pass through agent guardrails. In particular, remediation tools only check
-that an approval ID is present; they do not validate a stored approval themselves.
+The graph is bounded by `MAX_INVESTIGATION_STEPS`; tool calls also have a
+`TOOL_TIMEOUT_SECONDS` deadline.
 
-## Services and telemetry
+## MCP boundary
 
-The checkout service calls payment and inventory over HTTP. The services emit
-Prometheus request metrics and OpenTelemetry spans; Prometheus scrapes them and
-the collector exports spans to local Jaeger. Grafana uses the Prometheus data.
-MCP observability tools instead synthesize evidence from `FaultStore`.
+`MCPToolRegistry` supports two transports:
 
-The control API manages simulator state and receives alert payloads. It has no
-investigation, approval, or audit-history HTTP endpoints. Alert receipt does not
-launch the agent, and automatic Prometheus-to-webhook delivery is not configured.
+- `in_process`: server objects are used directly for fast unit tests.
+- `stdio`: the manifest in `ops/mcp/servers.json` starts five independent MCP
+  child processes using the official Python SDK client.
 
-## Evaluation boundaries
+The servers are:
 
-The ten regression cases test fixture diagnosis fields, selected tools, presence
-of evidence, request-text rejection, unsupported services, rejected approval
-records, and loop termination. These are deterministic workflow tests. They do
-not measure diagnosis accuracy on unseen incidents or an unauthorized-action
-rate. The result JSON records the mock mode and scenario-fixture diagnosis source.
+| Server | Purpose | Mutation policy |
+| --- | --- | --- |
+| Observability | Metrics, logs, alerts, traces, baselines | Read-only |
+| Deployments | Versions, deployment history, changed files | Read-only |
+| Runbooks | Local runbook and incident guidance search | Read-only |
+| Remediation | Rollback, restart, and recovery verification | Mutations require approval |
+| Incidents | Local incident record operations | Writes require approval |
+
+Each server exposes typed schemas discovered at runtime. The model receives
+those schemas for tool calling; it does not receive shell access.
+
+## Approval and guardrails
+
+The agent applies request, argument, and diagnosis guardrails before or after
+model interaction. Mutating MCP tools enforce the policy again at the server
+boundary. An approval is bound to:
+
+- the exact action name;
+- the exact canonical tool arguments;
+- the incident context;
+- an expiry time; and
+- one-time consumption.
+
+This means a valid approval for `deploy-001` cannot be reused for `deploy-000`
+or for another action. The local JSON store is intentionally a teaching
+implementation; production would replace it with transactional storage and
+identity-aware RBAC.
+
+## Audit trail
+
+`AuditLogger` writes redacted JSONL events containing an event ID, timestamp,
+previous hash, and record hash. `verify_chain()` detects edits or reordered
+records. This is useful for local demonstrations and tests; a production
+deployment should write to an access-controlled, append-only store with
+retention and multi-writer semantics.
+
+## Simulator and future adapters
+
+The simulator stores active faults in Redis when configured, otherwise in a
+shared JSON state file. That file fallback allows separate stdio MCP processes
+to observe the same local incident. The observability server currently reads
+simulator state. The intended adapter seams are:
+
+- `ObservabilityBackend` -> Prometheus, Loki, Tempo/Jaeger, and Alertmanager;
+- `DeploymentBackend` -> Kubernetes, Argo CD, or a deployment API;
+- `IncidentBackend` -> PagerDuty, Jira, or an incident platform;
+- `RemediationBackend` -> a restricted executor with short-lived credentials.
+
+The simulator implementations remain the deterministic test doubles for those
+future integrations.
+
+## Evaluation boundary
+
+`evals/cases.json` contains fifteen cases. They measure evidence-derived
+diagnosis fields, tool selection, injection blocking, unsupported arguments,
+approval rejection, exact-target mismatch, expiry, audit integrity, MCP schema
+contracts, bounded execution, and approved recovery. `make eval` calculates
+case pass rate and safety metrics from the results. These are regression and
+policy metrics, not claims of general LLM accuracy.

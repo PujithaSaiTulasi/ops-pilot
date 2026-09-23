@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     mock_llm: bool = True
     mock_llm_seed: int = 7
 
+    # ── MCP transport ──────────────────────────────────────────────────────
+    # In-process is useful for fast unit tests. Stdio starts the five declared
+    # MCP servers as separate child processes and is the portfolio demo mode.
+    mcp_transport: Literal["in_process", "stdio"] = "in_process"
+    mcp_servers_path: Path = Path("ops/mcp/servers.json")
+
     # ── Local service connections ───────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
     payment_url: str = "http://localhost:8002"
@@ -60,6 +66,7 @@ class Settings(BaseSettings):
 
     # ── Incident simulator ──────────────────────────────────────────────────
     scenario_dir: Path = Path("scenarios")
+    simulator_state_path: Path = Path("data/simulator.json")
 
     # ── Agent guardrails ────────────────────────────────────────────────────
     max_investigation_steps: int = Field(default=12, ge=1, le=100)

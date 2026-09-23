@@ -6,8 +6,10 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
+from opspilot.config import get_settings
 from opspilot.mcp.observability_backend import ObservabilityBackend
 from opspilot.mcp.server_utils import run_server
+from opspilot.simulator.store import FaultStore
 
 
 def create_server(backend: ObservabilityBackend | None = None) -> MCPServer:
@@ -43,7 +45,10 @@ def create_server(backend: ObservabilityBackend | None = None) -> MCPServer:
     return server
 
 
-server = create_server()
+_settings = get_settings()
+server = create_server(
+    ObservabilityBackend(FaultStore(_settings.redis_url, _settings.simulator_state_path))
+)
 
 if __name__ == "__main__":
     run_server(server)

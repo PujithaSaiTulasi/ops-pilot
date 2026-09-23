@@ -29,6 +29,7 @@ def _deterministic_test_environment(
     monkeypatch.setenv("LOG_LEVEL", "INFO")
     monkeypatch.setenv("LOG_FORMAT", "json")
     monkeypatch.setenv("REDIS_URL", "")
+    monkeypatch.setenv("MCP_TRANSPORT", "in_process")
     monkeypatch.setenv("OTEL_TRACES_EXPORTER", "none")
     monkeypatch.setenv("APPROVAL_STORE_PATH", str(tmp_path / "approvals.json"))
     monkeypatch.setenv("AUDIT_LOG_PATH", str(tmp_path / "audit.jsonl"))

@@ -1,35 +1,45 @@
 # OpsPilot
 
-A local incident-response prototype for learning MCP tools, bounded agent
-workflows, approval gates, and evaluation. Three small FastAPI services simulate
-checkout, payment, and inventory incidents. No production integration is required.
+A portfolio-ready local incident-response agent for learning LangGraph, MCP
+servers, structured tool calling, approval gates, guardrails, auditability, and
+evaluation. Three small FastAPI services simulate checkout, payment, and
+inventory incidents; the same MCP contracts can later be backed by real SRE
+systems.
 
 ## What works today
 
 - Six scenario fixtures and fault injection through the CLI or HTTP API.
-- Five MCP server modules exposing simulator evidence, deployment fixtures,
-  runbooks, remediation tools, and local incident records.
-- A bounded investigation loop with a scripted mock model by default and an
-  optional OpenAI Responses adapter for tool selection.
-- A manual approval workflow for the `bad_deployment` rollback demo, with a
-  separate simulator-state recovery check and a JSONL audit trail.
-- Ten deterministic regression cases, pytest, lint/type checks, and GitHub CI.
+- Five separately launchable MCP servers exposing simulator evidence,
+  deployment fixtures, runbooks, remediation tools, and local incident records.
+- A real LangGraph state graph with model, tool, and final-diagnosis nodes. The
+  default mock model is deterministic; an optional OpenAI Responses adapter can
+  select tools through the same discovered schemas.
+- Structured MCP tool schemas and a selectable `stdio` transport. Unit tests
+  use the in-process transport; `make mcp-discover` starts five child servers.
+- Approval records bound to the exact action arguments, target, TTL, and
+  one-time consumption, with low-level MCP enforcement on mutating tools.
+- Hash-chained, redacted JSONL audit events and simulator-state sharing across
+  separate MCP processes.
+- Fifteen deterministic regression and safety cases covering diagnosis,
+  injection blocking, approval misuse, expiry, audit integrity, MCP contracts,
+  bounded execution, and approved recovery.
 - Docker Compose configuration for services, Redis, Prometheus, Grafana,
   OpenTelemetry Collector, and Jaeger.
 
 ## Current limits
 
-This is a prototype, not a production incident-response system. The investigation
-currently fills the final diagnosis from the selected scenario's expected answer,
-including in live-model mode. MCP evidence is generated from simulator state;
-it does not query Prometheus or Jaeger. A passing evaluation therefore measures
-fixture/workflow consistency, not independent LLM diagnosis accuracy.
+This is still a local portfolio system, not a production incident-response
+service. The evidence backend is simulator-backed and the default model is a
+deterministic offline model; live Prometheus, Loki, Jaeger, Kubernetes, and
+identity integrations are intentionally left as adapter work. Recovery checks
+the simulator state rather than a real SLO observation window. File-backed
+approvals and audit logs are suitable for demos and tests, not multi-writer
+production deployments.
 
-Approval enforcement is in the remediation workflow. The low-level remediation
-tools only require a nonempty approval ID and do not authenticate it themselves.
-Recovery checks whether simulator faults remain; it does not measure post-fix
-traffic or latency. The full remediation workflow supports `bad_deployment` only.
-Deploy, delete, and notification tools are not implemented.
+The safety boundary is real inside the prototype: direct mutating MCP calls
+validate the stored approval, exact arguments, expiry, and one-time use. The
+evaluation metrics are calculated from traces, but they measure deterministic
+fixtures and policy behavior—not general LLM accuracy.
 
 See [architecture](docs/architecture.md) and the [threat model](docs/threat-model.md)
 for the implemented boundaries and remaining work.
@@ -46,10 +56,16 @@ make eval
 MOCK_LLM=true REDIS_URL= OTEL_TRACES_EXPORTER=none make demo
 ```
 
-The last command runs entirely within one process, injects the checkout fault,
-automatically approves the local demo action, and checks the resulting simulator
-state. It requires neither Docker nor an API key. It is not the manual approval
-path.
+The last command runs the local graph, injects the checkout fault, automatically
+approves the local demo action, and checks the resulting simulator state. It
+requires neither Docker nor an API key. It is not the manual approval path.
+
+To see the separate MCP server processes and their schemas:
+
+```bash
+MCP_TRANSPORT=stdio REDIS_URL= OTEL_TRACES_EXPORTER=none make mcp-discover
+MCP_TRANSPORT=stdio REDIS_URL= OTEL_TRACES_EXPORTER=none make demo
+```
 
 Optionally copy `.env.example` to `.env` for local settings. Keep an existing
 `.env` and any credentials private; both Git and the Docker build ignore it.
@@ -65,9 +81,9 @@ make approve APPROVAL_ID=APR-...
 make resume APPROVAL_ID=APR-...
 ```
 
-Redis shares faults across processes. Without a reachable Redis server, faults
-fall back to memory and disappear when a CLI process exits. Approvals and audit
-events are local files under `data/`.
+Redis shares faults across processes. Without a reachable Redis server, the
+configured `SIMULATOR_STATE_PATH` JSON file shares faults across the local MCP
+processes. Approvals and audit events are local files under `data/`.
 
 ## Local service stack
 
@@ -104,15 +120,18 @@ values are in [.env.example](.env.example).
 | --- | --- |
 | `MOCK_LLM` | Defaults to `true`; uses the scripted model |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | Needed for live tool selection; live calls can incur costs |
-| `REDIS_URL` | Shared simulator state; empty means process-local memory |
+| `MCP_TRANSPORT` | `in_process` for tests or `stdio` for separate MCP child processes |
+| `MCP_SERVERS_PATH` | MCP server process manifest |
+| `REDIS_URL` | Shared simulator state; empty uses the configured JSON state file |
+| `SIMULATOR_STATE_PATH` | Shared fallback state file for separate local processes |
 | `MAX_INVESTIGATION_STEPS` | Enforced investigation loop limit |
-| `APPROVAL_STORE_PATH` | Local JSON approval records |
-| `AUDIT_LOG_PATH` | Local JSONL event log |
+| `APPROVAL_STORE_PATH` | Local JSON approval records with TTL and consumption state |
+| `AUDIT_LOG_PATH` | Redacted, hash-chained local JSONL event log |
 | `OTEL_TRACES_EXPORTER` | Set to `none` to disable trace export |
 
 Compose uses its internal Redis and collector hostnames; the sample `.env`
-localhost addresses are for commands running on your host. Several settings are
-still reserved and do not enforce behavior, as marked in `.env.example`.
+localhost addresses are for commands running on your host. The per-step tool
+count and metrics toggle remain intentionally reserved for future work.
 
 ## Repository layout
 

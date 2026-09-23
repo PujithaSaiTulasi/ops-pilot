@@ -7,6 +7,7 @@ import asyncio
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 
+from opspilot.approval.store import ApprovalStore
 from opspilot.mcp.deployment_server import create_server as create_deployment_server
 from opspilot.mcp.incident_backend import IncidentBackend
 from opspilot.mcp.incident_server import create_server as create_incident_server
@@ -60,6 +61,22 @@ def test_remediation_requires_approval_id() -> None:
         )
 
     with pytest.raises(ToolError, match="approval_id is required"):
+        asyncio.run(call())
+
+
+def test_remediation_rejects_approval_for_a_different_deployment(tmp_path) -> None:
+    approvals = ApprovalStore(tmp_path / "approvals.json")
+    request = approvals.create("rollback_deployment", {"deployment_id": "deploy-001"}, "test")
+    approvals.decide(request.approval_id, True)
+    server = create_remediation_server(FaultStore(), approvals)
+
+    async def call() -> object:
+        return await server.call_tool(
+            "rollback_deployment",
+            {"deployment_id": "deploy-000", "approval_id": request.approval_id},
+        )
+
+    with pytest.raises(ToolError, match="approval arguments do not match"):
         asyncio.run(call())
 
 
