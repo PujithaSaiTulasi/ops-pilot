@@ -1,53 +1,58 @@
-PYTHON ?= python3.12
-VENV   ?= .venv
-BIN    := $(VENV)/bin
-PIP    := $(BIN)/pip
-PY     := $(BIN)/python
-COMPOSE ?= docker compose
-BASE_URL ?= http://localhost:8000
+# ---------------------------------------------------------------------------
+# OpsPilot — task runner
+# Requirements: Python 3.12, Docker with Compose v2+, GNU Make.
+# All secrets come from the environment (see .env.example); nothing is hardcoded.
+# ---------------------------------------------------------------------------
+
+PYTHON   ?= python3.12
+VENV     ?= .venv
+BIN      := $(VENV)/bin
+PY       := $(BIN)/python
+PIP      := $(BIN)/pip
+RUFF     := $(BIN)/ruff
+MYPY     := $(BIN)/mypy
+COMPOSE  ?= docker compose
+SCENARIO ?= bad_deployment
 
 .DEFAULT_GOAL := help
 
 .PHONY: help install up down test lint inject investigate eval clean
 
 help: ## Show available targets
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-install: ## Create venv and install package + dev dependencies
-	$(PYTHON) -m venv $(VENV)
-	$(PIP) install --upgrade pip
+install: ## Create the Python 3.12 venv and install runtime + dev dependencies
+	@test -d "$(VENV)" || $(PYTHON) -m venv "$(VENV)"
+	$(PIP) install --upgrade pip setuptools wheel
 	$(PIP) install -e ".[dev]"
+	@mkdir -p data
+	@echo "Installed. Activate with: source $(VENV)/bin/activate"
 
-up: ## Build and start the Docker Compose stack
+up: ## Build and start the stack (api, postgres, redis, prometheus, otel-collector)
 	$(COMPOSE) up -d --build
 
-down: ## Stop the Docker Compose stack
-	$(COMPOSE) down
+down: ## Stop the stack (volumes are preserved)
+	$(COMPOSE) down --remove-orphans
 
-test: ## Run the test suite
-	$(BIN)/pytest
+test: ## Run the pytest suite with coverage
+	$(PY) -m pytest --cov=opspilot --cov-report=term-missing
 
-lint: ## Run ruff lint + format check
-	$(BIN)/ruff check .
-	$(BIN)/ruff format --check .
+lint: ## Static checks: ruff lint, ruff format check, mypy
+	$(RUFF) check src tests
+	$(RUFF) format --check src tests
+	$(MYPY) src
 
-inject: ## Inject a scenario, e.g. make inject SCENARIO=bad_deployment
-	@test -n "$(SCENARIO)" || (echo "Usage: make inject SCENARIO=<name>" >&2; exit 1)
-	curl -fsS -X POST "$(BASE_URL)/api/v1/scenarios/inject" \
-		-H 'Content-Type: application/json' \
-		-d '{"scenario": "$(SCENARIO)"}'
-	@echo
+inject: ## Inject a simulated incident (make inject SCENARIO=bad_deployment)
+	$(PY) -m opspilot.cli inject --scenario $(SCENARIO)
 
-investigate: ## Trigger an investigation of open incidents
-	curl -fsS -X POST "$(BASE_URL)/api/v1/incidents/investigate" \
-		-H 'Content-Type: application/json' -d '{}'
-	@echo
+investigate: ## Run the agent investigation loop against open incidents
+	$(PY) -m opspilot.cli investigate
 
-eval: ## Run the evaluation harness
-	$(PY) -m ops_pilot.evals
+eval: ## Run the evaluation suite
+	$(PY) -m opspilot.cli eval
 
-clean: ## Remove local artifacts and tear down containers/volumes
-	rm -rf $(VENV) .pytest_cache .ruff_cache htmlcov .coverage coverage.xml
-	find . -type d -name __pycache__ -prune -exec rm -rf {} +
-	find . -type f -name '*.pyc' -delete
-	-$(COMPOSE) down -v --remove-orphans
+clean: ## Remove caches and build artifacts (keeps .venv and local data)
+	rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage coverage.xml htmlcov dist build
+	find . -path "./$(VENV)" -prune -o -type d -name "__pycache__" -prune -exec rm -rf {} +
+	find . -type d -name "*.egg-info" -prune -exec rm -rf {} +
+	find . -type f \( -name "*.pyc" -o -name "*.pyo" \) -delete

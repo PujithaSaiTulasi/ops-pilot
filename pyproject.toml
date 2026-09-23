@@ -1,71 +1,123 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
 
 [project]
-name = "ops-pilot"
+name = "opspilot"
 version = "0.1.0"
-description = "OpsPilot - an agentic incident-response platform with MCP tools, guardrails, approvals, audit logs, and evaluations."
+description = "OpsPilot: an agentic incident-response platform with MCP tools, guardrails, human approval, audit logs, and evaluations."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [{ name = "OpsPilot Team" }]
+authors = [{ name = "OpsPilot Maintainers" }]
 keywords = ["incident-response", "agentic", "mcp", "sre", "fastapi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+    "Typing :: Typed",
+]
 dependencies = [
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.30",
-    "pydantic>=2.8",
-    "pydantic-settings>=2.4",
-    "python-dotenv>=1.0",
-    "structlog>=24.4",
-    "httpx>=0.27",
-    "sqlalchemy>=2.0",
-    "aiosqlite>=0.20",
-    "psycopg[binary]>=3.2",
-    "redis>=5.0",
-    "prometheus-client>=0.21",
-    "opentelemetry-api>=1.27",
-    "opentelemetry-sdk>=1.27",
-    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn[standard]>=0.30.0,<1.0.0",
+    "pydantic>=2.8.0,<3.0.0",
+    "pydantic-settings>=2.4.0,<3.0.0",
+    "httpx>=0.27.0,<1.0.0",
+    "openai>=2.0.0,<4.0.0",
+    "mcp>=1.9.0,<3.0.0",
+    "sqlalchemy>=2.0.30,<3.0.0",
+    "aiosqlite>=0.20.0,<1.0.0",
+    "psycopg[binary]>=3.2.0,<4.0.0",
+    "redis>=5.0.0,<9.0.0",
+    "prometheus-client>=0.20.0,<1.0.0",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.27.0",
     "opentelemetry-instrumentation-fastapi>=0.48b0",
-    "openai>=1.40",
-    "mcp>=1.2.0",
+    "PyYAML>=6.0.1,<7.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.2",
-    "pytest-asyncio>=0.23",
-    "pytest-cov>=5.0",
-    "ruff>=0.6",
-    "pyyaml>=6.0",
+    "pytest>=8.2.0,<10.0.0",
+    "pytest-asyncio>=0.24.0,<2.0.0",
+    "pytest-cov>=5.0.0,<8.0.0",
+    "ruff>=0.6.0,<2.0.0",
+    "mypy>=1.11.0,<2.0.0",
+    "types-PyYAML>=6.0.12",
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[project.scripts]
+opspilot = "opspilot.cli:main"
 
+[project.urls]
+Documentation = "https://github.com/opspilot/opspilot#readme"
+Source = "https://github.com/opspilot/opspilot"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opspilot"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers"
+addopts = "-ra --strict-markers"
 asyncio_mode = "auto"
 markers = [
-    "unit: fast, hermetic tests with no external services",
-    "integration: tests that need Docker services (postgres, redis)",
-    "eval: evaluation-harness tests",
+    "unit: fast, isolated tests with no I/O beyond tmp files",
+    "integration: tests that exercise multiple components",
+    "e2e: end-to-end tests that exercise the running stack",
 ]
 
+# ---------------------------------------------------------------------------
+# coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+branch = true
+source = ["opspilot"]
+omit = ["*/__main__.py"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+    "if __name__ == .__main__.:",
+]
+show_missing = true
+
+# ---------------------------------------------------------------------------
+# ruff (lint + format)
+# ---------------------------------------------------------------------------
 [tool.ruff]
-target-version = "py312"
 line-length = 100
-exclude = [".git", ".venv", "__pycache__", "dist", "build", "*.egg-info"]
+target-version = "py312"
+src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
-ignore = ["E501"]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"] # line length is enforced by `ruff format`
 
 [tool.ruff.lint.isort]
-known-first-party = ["ops_pilot"]
+known-first-party = ["opspilot"]
 
-[tool.coverage.run]
-source = ["src/ops_pilot"]
-branch = true
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+ignore_missing_imports = true

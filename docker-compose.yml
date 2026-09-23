@@ -1,3 +1,5 @@
+# OpsPilot — base Compose stack (simulated/local environment only).
+# Never points at production systems; all credentials are local development values.
 name: opspilot
 
 services:
@@ -8,46 +10,58 @@ services:
     image: opspilot-api:local
     ports:
       - "${API_PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
     environment:
-      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      APP_NAME: ${APP_NAME:-OpsPilot}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-opspilot}:${POSTGRES_PASSWORD:-opspilot}@postgres:5432/${POSTGRES_DB:-opspilot}
-      REDIS_URL: redis://redis:6379/0
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      MOCK_LLM: ${MOCK_LLM:-true}
+      MOCK_LLM_SEED: ${MOCK_LLM_SEED:-7}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
-      MOCK_LLM: ${MOCK_LLM:-true}
-      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://opspilot:opspilot@db:5432/opspilot}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      SCENARIO_DIR: ${SCENARIO_DIR:-scenarios}
+      ENABLE_METRICS: ${ENABLE_METRICS:-true}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-opspilot}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
-      PROMETHEUS_ENABLED: ${PROMETHEUS_ENABLED:-true}
-      EXTERNAL_NOTIFICATIONS_ENABLED: ${EXTERNAL_NOTIFICATIONS_ENABLED:-false}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     restart: unless-stopped
 
-  postgres:
+  # PostgreSQL for shared/local stack runs. SQLite remains the zero-dependency
+  # default for unit tests and bare `make test` runs.
+  db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-opspilot}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opspilot}
       POSTGRES_DB: ${POSTGRES_DB:-opspilot}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opspilot} -d ${POSTGRES_DB:-opspilot}"]
       interval: 5s
-      timeout: 3s
+      timeout: 5s
       retries: 10
     restart: unless-stopped
 
+  # Shared simulator/approval state for multi-process runs.
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redisdata:/data
+    ports:
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -56,22 +70,29 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:v2.54.1
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    image: prom/prometheus:v2.53.2
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
     ports:
       - "9090:9090"
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    depends_on:
+      - api
     restart: unless-stopped
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.111.0
+    image: otel/opentelemetry-collector-contrib:0.104.0
     command: ["--config=/etc/otelcol/config.yaml"]
-    volumes:
-      - ./otelcol/config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "4318:4318"
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    volumes:
+      - ./ops/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
     restart: unless-stopped
 
 volumes:
   pgdata:
-  redisdata:
+  promdata:

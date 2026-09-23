@@ -1,4 +1,4 @@
-# Secrets / local config — never commit these
+# Secrets / local environment — never commit these.
 .env
 .env.*
 !.env.example
@@ -8,32 +8,30 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .eggs/
-dist/
 build/
+dist/
 .venv/
 venv/
 
-# Test / lint caches
+# Test / lint caches and reports
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
 .coverage
 .coverage.*
-htmlcov/
 coverage.xml
+htmlcov/
 
-# Local data (SQLite, etc.)
-var/
-data/
-*.db
-*.sqlite
-*.sqlite3
+# Local runtime state
+data/*.db
+data/*.db-*
+data/*.sqlite3
+*.log
 
-# IDE / OS
+# Docker bind-mount leftovers
+pgdata/
+
+# Editors / OS
 .idea/
 .vscode/
 .DS_Store
-
-# Logs
-*.log
-logs/

@@ -1,26 +1,28 @@
-# OpsPilot API image
+# syntax=docker/dockerfile:1
+# OpsPilot API image — local/simulated use only, no production credentials.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-# Dependency layer (cached unless pyproject changes)
-COPY pyproject.toml README.md ./
+RUN useradd --create-home --uid 10001 opspilot
+
+COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
-RUN pip install --upgrade pip && pip install .
 
-COPY . .
+RUN pip install --no-cache-dir . \
+    && mkdir -p /app/data \
+    && chown -R opspilot:opspilot /app/data
 
-RUN useradd --create-home --uid 10001 opspilot \
-    && mkdir -p /app/var && chown -R opspilot:opspilot /app
 USER opspilot
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status == 200 else 1)"
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)" || exit 1
 
-CMD ["uvicorn", "ops_pilot.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "opspilot.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
