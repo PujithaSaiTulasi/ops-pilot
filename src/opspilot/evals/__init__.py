@@ -1,1 +1,1 @@
-"""Evaluation suites for investigation quality (planned)."""
+"""Deterministic evaluation suites for investigation quality and safety."""

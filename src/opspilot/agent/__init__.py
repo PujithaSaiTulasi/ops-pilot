@@ -1,1 +1,1 @@
-"""Agent core: the incident investigation loop (planned, not implemented)."""
+"""Bounded incident investigation and approval-gated remediation workflows."""

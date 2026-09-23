@@ -2,6 +2,8 @@
 # Adds hot-reload for the API; not used in any production-like context.
 services:
   api:
+    environment:
+      PYTHONPATH: /app/src
     command:
       - uvicorn
       - opspilot.api.main:app

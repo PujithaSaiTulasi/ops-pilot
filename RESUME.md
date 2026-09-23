@@ -2,20 +2,29 @@
 
 ## Resume bullet
 
-Built OpsPilot, an agentic incident-response platform using Python, FastAPI,
-MCP servers, OpenAI tool calling, structured guardrails, approval-gated
-remediation, OpenTelemetry, and deterministic evaluations; replayed 10 incident
-and safety cases with a 100% pass rate and 0% unauthorized-action rate.
+Built a local incident-response prototype with Python/FastAPI, five MCP server
+modules, a bounded tool-calling workflow, a manual rollback approval flow,
+JSONL audit events, Prometheus/OpenTelemetry integration, and ten deterministic
+workflow and safety regression cases with GitHub Actions verification.
 
-## What to discuss in interviews
+## What to explain in interviews
 
-- Why read-only evidence tools and side-effecting tools are separate.
-- How MCP tool discovery differs from directly wiring one function into an app.
-- Why logs are untrusted evidence and must not become instructions.
-- Why human approval is required before rollback or restart.
-- Why recovery is verified independently instead of trusting the remediation result.
-- How mock mode makes agent tests deterministic and CI-safe.
-- Which evaluation metrics matter: root-cause accuracy, tool selection, evidence,
-  approval compliance, and prompt-injection resistance.
-- How the local simulator can later be replaced with production adapters without
-  changing the agent policy layer.
+- How simulator faults provide repeatable incident demonstrations.
+- How the agent discovers typed tool schemas from MCP server objects.
+- The difference between this in-process SDK dispatcher and a networked MCP client.
+- How the checkout rollback pauses for approval and resumes from a stored decision.
+- Why a workflow gate also needs tool-level authorization before production use.
+- Why simulator-state verification differs from measuring real service recovery.
+- How mock mode makes regression checks reproducible without API credentials.
+
+## Claims to avoid
+
+The final diagnosis currently uses the scenario's expected answer, even when the
+live adapter selects the tools. Do not describe the eval pass rate as measured
+LLM root-cause accuracy. An earlier unauthorized-action-rate field was a constant
+and has been removed; do not use it as a resume metric. The model adapter is
+present, but the offline checks do not validate live-model behavior.
+
+Describe this as a working local prototype. Future work includes live telemetry
+adapters, diagnoses independent of scenario answers, authorization at each
+mutating tool, and evaluations on previously unseen incidents.

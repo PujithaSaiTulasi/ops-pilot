@@ -13,7 +13,10 @@ coverage.xml
 htmlcov
 dist
 build
-data
+data/*
+!data/runbooks/
+!data/runbooks/**
+evals/results
 *.db
 *.sqlite3
 *.log

@@ -52,8 +52,7 @@ class Settings(BaseSettings):
     mock_llm: bool = True
     mock_llm_seed: int = 7
 
-    # ── Storage ─────────────────────────────────────────────────────────────
-    database_url: str = "sqlite+aiosqlite:///./data/opspilot.db"
+    # ── Local service connections ───────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
     payment_url: str = "http://localhost:8002"
     inventory_url: str = "http://localhost:8003"

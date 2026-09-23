@@ -22,16 +22,13 @@ services:
       MOCK_LLM_SEED: ${MOCK_LLM_SEED:-7}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://opspilot:opspilot@db:5432/opspilot}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_URL: redis://redis:6379/0
       SCENARIO_DIR: ${SCENARIO_DIR:-scenarios}
       ENABLE_METRICS: ${ENABLE_METRICS:-true}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-opspilot}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
       otel-collector:
@@ -46,6 +43,12 @@ services:
     command: ["uvicorn", "opspilot.services.checkout:app", "--host=0.0.0.0", "--port=8000"]
     ports:
       - "8001:8000"
+    healthcheck: &service-healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -53,6 +56,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       PAYMENT_URL: http://payment:8000
       INVENTORY_URL: http://inventory:8000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
@@ -66,11 +70,13 @@ services:
     command: ["uvicorn", "opspilot.services.payment:app", "--host=0.0.0.0", "--port=8000"]
     ports:
       - "8002:8000"
+    healthcheck: *service-healthcheck
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       REDIS_URL: redis://redis:6379/0
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
@@ -84,36 +90,19 @@ services:
     command: ["uvicorn", "opspilot.services.inventory:app", "--host=0.0.0.0", "--port=8000"]
     ports:
       - "8003:8000"
+    healthcheck: *service-healthcheck
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       REDIS_URL: redis://redis:6379/0
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
 
-  # PostgreSQL for shared/local stack runs. SQLite remains the zero-dependency
-  # default for unit tests and bare `make test` runs.
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-opspilot}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opspilot}
-      POSTGRES_DB: ${POSTGRES_DB:-opspilot}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opspilot} -d ${POSTGRES_DB:-opspilot}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
-  # Shared simulator/approval state for multi-process runs.
+  # Shared simulator state for multi-process runs; approvals use a local JSON file.
   redis:
     image: redis:7-alpine
     ports:
@@ -155,7 +144,6 @@ services:
     image: jaegertracing/all-in-one:1.57
     ports:
       - "16686:16686"
-      - "4318:4318"
     restart: unless-stopped
 
   otel-collector:
@@ -169,5 +157,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
   promdata:

@@ -28,7 +28,10 @@ def _deterministic_test_environment(
     monkeypatch.setenv("ENVIRONMENT", "test")
     monkeypatch.setenv("LOG_LEVEL", "INFO")
     monkeypatch.setenv("LOG_FORMAT", "json")
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path / 'test.db'}")
+    monkeypatch.setenv("REDIS_URL", "")
+    monkeypatch.setenv("OTEL_TRACES_EXPORTER", "none")
+    monkeypatch.setenv("APPROVAL_STORE_PATH", str(tmp_path / "approvals.json"))
+    monkeypatch.setenv("AUDIT_LOG_PATH", str(tmp_path / "audit.jsonl"))
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

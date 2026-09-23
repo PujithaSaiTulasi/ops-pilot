@@ -1,1 +1,1 @@
-"""Observability: Prometheus metrics, OpenTelemetry traces, log wiring (planned)."""
+"""Prometheus metrics, OpenTelemetry traces, alerts, and log wiring."""

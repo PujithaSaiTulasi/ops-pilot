@@ -6,12 +6,16 @@ import re
 from pathlib import Path
 
 import yaml
+from fastapi.testclient import TestClient
+
+from opspilot.config import Settings
+from opspilot.services.common import create_service_app
+from opspilot.simulator.store import FaultStore
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_FILES = [
     "README.md",
-    "BUILD_STATUS.md",
     "pyproject.toml",
     ".env.example",
     ".gitignore",
@@ -46,7 +50,6 @@ REQUIRED_COMPOSE_SERVICES = {
     "checkout",
     "payment",
     "inventory",
-    "db",
     "redis",
     "prometheus",
     "otel-collector",
@@ -111,9 +114,8 @@ def test_compose_defines_the_full_stack() -> None:
 
     assert REQUIRED_COMPOSE_SERVICES <= set(services)
     assert "build" in services["api"]
-    assert services["db"].get("healthcheck"), "db needs a healthcheck"
     assert services["redis"].get("healthcheck"), "redis needs a healthcheck"
-    assert set(compose["volumes"]) >= {"pgdata", "promdata"}
+    assert set(compose["volumes"]) >= {"promdata"}
 
 
 def test_compose_override_enables_dev_reload() -> None:
@@ -121,6 +123,33 @@ def test_compose_override_enables_dev_reload() -> None:
     command = " ".join(str(part) for part in override["services"]["api"]["command"])
 
     assert "--reload" in command
+
+
+def test_compose_has_no_duplicate_published_ports() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "docker-compose.yml").read_text())
+    published = [
+        port.rsplit(":", 1)[0]
+        for service in compose["services"].values()
+        for port in service.get("ports", [])
+    ]
+    assert len(published) == len(set(published))
+
+
+def test_compose_service_probes_match_service_routes() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "docker-compose.yml").read_text())
+    for service_name in ("checkout", "payment", "inventory"):
+        probe = compose["services"][service_name]["healthcheck"]["test"][-1]
+        match = re.search(r"http://127\.0\.0\.1:8000([^']+)", probe)
+        assert match is not None
+        app = create_service_app(
+            service_name,
+            "/traffic",
+            "1.0.0",
+            settings=Settings(_env_file=None, environment="test"),
+            store=FaultStore(),
+        )
+        with TestClient(app) as client:
+            assert client.get(match.group(1)).status_code == 200
 
 
 def test_prometheus_scrapes_the_api() -> None:
@@ -146,6 +175,14 @@ def test_dockerfile_runs_as_non_root_with_healthcheck() -> None:
     assert "HEALTHCHECK" in dockerfile
     assert "\nUSER " in dockerfile, "container must not run as root"
     assert "python:3.12" in dockerfile
+    assert "COPY scenarios ./scenarios" in dockerfile
+    assert "COPY data/runbooks ./data/runbooks" in dockerfile
+
+
+def test_legacy_scaffold_is_absent() -> None:
+    assert not (REPO_ROOT / "src/ops_pilot").exists()
+    assert not (REPO_ROOT / "prometheus").exists()
+    assert not (REPO_ROOT / "otelcol").exists()
 
 
 def test_no_hardcoded_credentials_in_source() -> None:

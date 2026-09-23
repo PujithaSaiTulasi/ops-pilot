@@ -1,1 +1,1 @@
-"""LLM clients: official OpenAI SDK plus deterministic mock mode (planned)."""
+"""OpenAI Responses API client plus deterministic mock mode."""

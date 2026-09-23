@@ -1,1 +1,1 @@
-"""Incident simulator: injects deterministic scenarios (planned)."""
+"""Local incident simulator for deterministic scenario injection and recovery."""
