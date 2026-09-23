@@ -16,7 +16,7 @@ SCENARIO ?= bad_deployment
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install up down test lint inject investigate eval clean
+.PHONY: help install up down test lint inject reset state investigate eval approve reject remediate resume demo clean
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -45,11 +45,32 @@ lint: ## Static checks: ruff lint, ruff format check, mypy
 inject: ## Inject a simulated incident (make inject SCENARIO=bad_deployment)
 	$(PY) -m opspilot.cli inject --scenario $(SCENARIO)
 
+reset: ## Reset all simulated incidents
+	$(PY) -m opspilot.cli reset
+
+state: ## Show active simulated incidents
+	$(PY) -m opspilot.cli state
+
 investigate: ## Run the agent investigation loop against open incidents
 	$(PY) -m opspilot.cli investigate
 
 eval: ## Run the evaluation suite
-	$(PY) -m opspilot.cli eval
+	$(PY) -m opspilot.cli eval --suite default
+
+approve: ## Approve an action (make approve APPROVAL_ID=APR-...)
+	$(PY) -m opspilot.cli approve --approval-id $(APPROVAL_ID)
+
+reject: ## Reject an action (make reject APPROVAL_ID=APR-...)
+	$(PY) -m opspilot.cli reject --approval-id $(APPROVAL_ID)
+
+remediate: ## Prepare remediation (make remediate INCIDENT=bad_deployment)
+	$(PY) -m opspilot.cli remediate --incident $(or $(INCIDENT),bad_deployment)
+
+resume: ## Resume approved remediation (make resume APPROVAL_ID=APR-...)
+	$(PY) -m opspilot.cli resume --approval-id $(APPROVAL_ID)
+
+demo: ## Run the local simulator demonstration
+	$(PY) -m opspilot.cli demo --incident bad_deployment
 
 clean: ## Remove caches and build artifacts (keeps .venv and local data)
 	rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage coverage.xml htmlcov dist build

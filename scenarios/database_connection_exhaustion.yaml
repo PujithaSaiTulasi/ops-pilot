@@ -1,0 +1,16 @@
+scenario_id: database_connection_exhaustion
+title: Database connection pool exhaustion
+description: The checkout service cannot obtain a database connection.
+affected_services:
+  - checkout-api
+symptoms:
+  - database connection usage is saturated
+  - checkout returns 503
+root_cause: checkout database connection pool exhausted
+safe_remediation: restore database connection capacity
+verification:
+  - database pool usage below 80%
+  - checkout succeeds
+fault_details:
+  service: checkout-api
+  pool_usage: 1.0

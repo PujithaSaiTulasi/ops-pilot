@@ -1,0 +1,17 @@
+scenario_id: inventory_errors
+title: Inventory dependency errors
+description: The inventory service returns intermittent errors.
+affected_services:
+  - inventory-service
+  - checkout-api
+symptoms:
+  - inventory error rate is elevated
+  - checkout returns dependency errors
+root_cause: inventory-service is rejecting reservation requests
+safe_remediation: restore inventory-service responses
+verification:
+  - inventory errors return to baseline
+  - checkout succeeds
+fault_details:
+  service: inventory-service
+  error_rate: 1.0

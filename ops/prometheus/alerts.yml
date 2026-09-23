@@ -1,0 +1,17 @@
+groups:
+  - name: opspilot-simulator
+    rules:
+      - alert: CheckoutHighLatency
+        expr: histogram_quantile(0.95, sum(rate(opspilot_service_request_duration_seconds_bucket{service="checkout-api"}[5m])) by (le)) > 0.3
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: Checkout p95 latency is above 300ms
+      - alert: CheckoutErrors
+        expr: sum(rate(opspilot_service_requests_total{service="checkout-api",status=~"5.."}[5m])) > 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: Checkout is returning server errors

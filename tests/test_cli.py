@@ -21,29 +21,28 @@ def test_inject_requires_a_scenario() -> None:
     assert excinfo.value.code == 2
 
 
-@pytest.mark.parametrize(
-    "argv",
-    [
-        ["inject", "--scenario", "bad_deployment"],
-        ["investigate"],
-        ["eval", "--suite", "default"],
-    ],
-)
-def test_unimplemented_commands_exit_non_zero_with_guidance(
-    argv: list[str], capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Until their phase lands, commands fail loudly instead of pretending to work."""
-    exit_code = main(argv)
-
-    assert exit_code == 1
-    err = capsys.readouterr().err
-    assert "not implemented yet" in err
-    assert "BUILD_STATUS.md" in err
+def test_inject_command_activates_known_scenario(capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = main(["inject", "--scenario", "bad_deployment"])
+    assert exit_code == 0
+    assert "activated bad_deployment" in capsys.readouterr().out
 
 
-def test_unimplemented_command_names_the_subcommand(
+def test_reset_command_clears_scenarios(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["reset"]) == 0
+    assert "simulator reset" in capsys.readouterr().out
+
+
+def test_investigate_command_runs_mock_agent(capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = main(["investigate", "--incident", "bad_deployment"])
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert '"suspected_root_cause"' in output
+    assert '"events"' in output
+
+
+def test_eval_command_runs_default_suite(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    main(["investigate"])
-
-    assert "'investigate'" in capsys.readouterr().err
+    main(["eval"])
+    output = capsys.readouterr().out
+    assert '"pass_rate"' in output

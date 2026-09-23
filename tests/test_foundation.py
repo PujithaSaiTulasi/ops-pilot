@@ -22,6 +22,10 @@ REQUIRED_FILES = [
     "docker-compose.override.yml",
     "ops/prometheus/prometheus.yml",
     "ops/otel-collector/config.yaml",
+    "ops/prometheus/alerts.yml",
+    "ops/grafana/provisioning/datasources/datasource.yml",
+    "ops/grafana/provisioning/dashboards/dashboard.yml",
+    "ops/grafana/dashboards/opspilot.json",
     "LICENSE",
 ]
 
@@ -37,7 +41,18 @@ REQUIRED_MAKE_TARGETS = {
     "clean",
 }
 
-REQUIRED_COMPOSE_SERVICES = {"api", "db", "redis", "prometheus", "otel-collector"}
+REQUIRED_COMPOSE_SERVICES = {
+    "api",
+    "checkout",
+    "payment",
+    "inventory",
+    "db",
+    "redis",
+    "prometheus",
+    "otel-collector",
+    "grafana",
+    "jaeger",
+}
 
 #: Patterns that must never appear in source code.
 FORBIDDEN_PATTERNS = [
@@ -122,7 +137,7 @@ def test_otel_collector_exports_locally_only() -> None:
     config = yaml.safe_load((REPO_ROOT / "ops/otel-collector/config.yaml").read_text())
     exporters = set(config["service"]["pipelines"]["traces"]["exporters"])
 
-    assert exporters <= {"debug", "logging"}, "traces must not leave the local stack"
+    assert exporters <= {"debug", "logging", "otlphttp/jaeger"}, "traces must stay local"
 
 
 def test_dockerfile_runs_as_non_root_with_healthcheck() -> None:

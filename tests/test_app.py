@@ -7,11 +7,12 @@ from fastapi.testclient import TestClient
 from opspilot import __version__
 from opspilot.api.app import create_app
 from opspilot.config import Settings
+from opspilot.simulator.store import FaultStore
 
 
 def _client() -> TestClient:
     settings = Settings(_env_file=None, environment="test")
-    return TestClient(create_app(settings))
+    return TestClient(create_app(settings, FaultStore()))
 
 
 def test_healthz_returns_ok() -> None:
@@ -35,3 +36,28 @@ def test_openapi_document_is_generated() -> None:
     document = response.json()
     assert document["info"]["title"] == "OpsPilot"
     assert "/healthz" in document["paths"]
+
+
+def test_simulator_can_inject_and_reset() -> None:
+    client = _client()
+
+    response = client.post("/simulate/inject", json={"scenario": "bad_deployment"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "active"
+    assert client.get("/simulate/state").json()["active_faults"]
+
+    response = client.post("/simulate/reset")
+    assert response.status_code == 200
+    assert client.get("/simulate/state").json() == {"active_faults": []}
+
+
+def test_alerts_include_active_fault_and_webhook_payload() -> None:
+    client = _client()
+    client.post("/simulate/inject", json={"scenario": "bad_deployment"})
+
+    alerts = client.get("/alerts").json()
+    assert alerts["active"][0]["labels"]["alertname"] == "bad_deployment"
+
+    response = client.post("/alerts/webhook", json={"status": "firing", "labels": {"team": "sre"}})
+    assert response.status_code == 200
+    assert response.json()["status"] == "recorded"

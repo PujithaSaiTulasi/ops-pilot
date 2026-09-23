@@ -1,0 +1,27 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "title": "Request rate",
+      "type": "timeseries",
+      "targets": [{"expr": "sum(rate(opspilot_service_requests_total[5m])) by (service)", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "title": "Checkout latency",
+      "type": "timeseries",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(opspilot_service_request_duration_seconds_bucket{service=\"checkout-api\"}[5m])) by (le))", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "title": "OpsPilot Simulator",
+  "version": 1
+}

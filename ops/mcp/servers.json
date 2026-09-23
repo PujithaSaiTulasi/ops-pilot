@@ -1,0 +1,42 @@
+{
+  "servers": {
+    "observability": {
+      "command": "python",
+      "args": ["-m", "opspilot.mcp.observability_server"],
+      "read_only": true,
+      "tools": [
+        "get_service_metrics",
+        "search_logs",
+        "get_recent_alerts",
+        "get_trace_summary",
+        "compare_service_baseline"
+      ]
+    },
+    "deployments": {
+      "command": "python",
+      "args": ["-m", "opspilot.mcp.deployment_server"],
+      "read_only": true,
+      "tools": ["list_recent_deployments", "get_deployment_details", "get_changed_files", "get_active_version"]
+    },
+    "runbooks": {
+      "command": "python",
+      "args": ["-m", "opspilot.mcp.runbook_server"],
+      "read_only": true,
+      "tools": ["search_runbooks", "get_runbook", "search_past_incidents"]
+    },
+    "remediation": {
+      "command": "python",
+      "args": ["-m", "opspilot.mcp.remediation_server"],
+      "read_only": false,
+      "approval_required": true,
+      "tools": ["create_rollback_plan", "rollback_deployment", "restart_service", "verify_recovery"]
+    },
+    "incidents": {
+      "command": "python",
+      "args": ["-m", "opspilot.mcp.incident_server"],
+      "read_only": false,
+      "approval_required": true,
+      "tools": ["create_incident", "update_incident", "add_incident_comment", "get_incident"]
+    }
+  }
+}

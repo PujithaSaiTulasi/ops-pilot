@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 1 — Foundation ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 9 — Hardening ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -48,6 +48,175 @@
 - Placeholder packages for planned components: `agent`, `mcp`, `tools`,
   `guardrails`, `approval`, `audit`, `llm`, `simulator`, `evals`,
   `observability`.
+
+## Phase 2 — Simulated production environment
+
+### Completed
+
+- Deterministic scenario catalog with six incident types and YAML ground truth.
+- Shared `FaultStore` with Redis support and an in-memory test fallback.
+- Checkout, payment, and inventory FastAPI services with health endpoints,
+  structured request logs, service-version headers, and isolated Prometheus metrics.
+- Fault-aware request behavior for latency regressions, dependency timeouts,
+  dependency errors, database pressure, memory pressure, and dependency failure.
+- OpsPilot control-plane endpoints for scenario listing, injection, reset, state,
+  and metrics.
+- Docker Compose service entries for the three simulated production services.
+- CLI commands for `inject`, `reset`, and `state`.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **42 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+
+## Phase 3 — Observability
+
+### Completed
+
+- Prometheus scrape jobs for the control plane and all simulated services.
+- Local alert rules for checkout latency and server errors.
+- Alert webhook receiver and active-fault alert projection at `/alerts`.
+- OpenTelemetry tracing setup with local OTLP export and test-mode isolation.
+- Jaeger and Grafana services in Compose with local-only provisioning.
+- Grafana dashboard covering request rate and checkout latency.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **42 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+| `docker compose config --quiet` | **passed** |
+
+## Phase 4 — MCP servers
+
+### Completed
+
+- Local MCP server registry in `ops/mcp/servers.json`.
+- Read-only observability MCP server for metrics, logs, alerts, traces, and
+  baseline comparison.
+- Read-only deployment MCP server for deployment history, versions, and diffs.
+- Read-only runbook MCP server for checked-in incident guidance.
+- Approval-aware remediation MCP server for rollback, restart, and recovery
+  verification.
+- Incident MCP server for local incident records and comments.
+- Stdio entry points compatible with the installed MCP SDK.
+- MCP discovery and tool-call tests covering all server families.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **47 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+
+## Phase 5 — Agent runtime
+
+### Completed
+
+- Bounded OpsPilot investigation loop with configurable step limits.
+- MCP tool discovery and dispatch into a normalized agent tool surface.
+- Deterministic mock model sequence for offline demonstrations and CI.
+- Optional OpenAI Responses API adapter for live model mode.
+- Structured diagnosis schema with confidence, evidence, remediation, and
+  approval metadata.
+- Investigation event trace containing model decisions and tool results.
+- CLI support for `opspilot investigate --incident ...`.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **49 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+
+## Phase 6 — Guardrails, approvals, and audit
+
+### Completed
+
+- Input guardrail for prompt-injection, exfiltration, and oversized requests.
+- Tool guardrail enforcing service allowlists, safe argument limits, and
+  approval identifiers for side-effecting actions.
+- Output guardrail requiring evidence and approval metadata for risky actions.
+- File-backed approval store with pending, approved, and rejected states.
+- CLI approval workflow through `approve` and `reject` commands.
+- Append-only JSONL audit log with recursive sensitive-value redaction.
+- Agent integration that records investigation, tool, approval, and diagnosis
+  events.
+- Local runtime state is ignored so approvals and audit data never enter Git.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **55 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+
+## Phase 7 — Remediation and verification
+
+### Completed
+
+- End-to-end remediation workflow that investigates, prepares a rollback plan,
+  creates an approval request, pauses, resumes after approval, and verifies
+  recovery independently.
+- Rejected approvals leave the simulated incident active.
+- Successful rollback clears the simulator fault and checks the recovery state.
+- `remediate`, `resume`, and `demo` CLI commands plus Make targets.
+- Demo path proves the action result is not treated as verification evidence.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **57 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+| `make demo` | **resolved with verified recovery** |
+
+## Phase 8 — Evaluations
+
+### Completed
+
+- Ten versioned evaluation cases covering diagnosis, tool selection, evidence,
+  prompt injection, unsafe arguments, approval rejection, and bounded execution.
+- Deterministic evaluation runner that resets simulator state per case.
+- Metrics for root-cause accuracy, service accuracy, tool selection, evidence,
+  approval compliance, and safety behavior.
+- JSON results written to `evals/results/latest.json` and ignored from Git.
+- CLI/Make evaluation command fails below the 80% pass threshold or if
+  unauthorized-action rate is nonzero.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **57 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+| `make eval` | **10/10 passed; 100% pass rate; 0% unauthorized actions** |
+
+## Phase 9 — CI, documentation, and final hardening
+
+### Completed
+
+- GitHub Actions workflow for tests, lint/type checks, eval regression, and
+  Compose validation.
+- Architecture diagram and MCP boundary documentation.
+- Threat model covering prompt injection, tool misuse, approval bypass, data
+  leakage, compromised MCP servers, and false recovery claims.
+- Exact local demo and manual approval instructions.
+- Resume bullet and interview talking points grounded in measured results.
+- Final clean-stack checks completed without production credentials.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **57 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+| `make eval` | **10/10 passed; 100% pass rate; 0% unauthorized actions** |
+| `docker compose config --quiet` | **passed** |
+| `make demo` | **resolved with independently verified recovery** |
 
 ### Tests run
 
