@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 
+from opspilot.agent.runtime import OpsPilotAgent
 from opspilot.config import get_settings
 from opspilot.simulator.catalog import inject_scenario
 from opspilot.simulator.store import FaultStore
@@ -29,7 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("reset", help="Reset all simulated incidents")
     subparsers.add_parser("state", help="Show active simulated incidents")
 
-    subparsers.add_parser("investigate", help="Run the agent investigation loop")
+    investigate = subparsers.add_parser("investigate", help="Run the agent investigation loop")
+    investigate.add_argument("--incident", default="bad_deployment", help="Scenario/incident id")
+    investigate.add_argument("--request", default=None, help="Optional investigation request")
 
     evaluate = subparsers.add_parser("eval", help="Run the evaluation suite")
     evaluate.add_argument("--suite", default="default", help="Evaluation suite to run")
@@ -55,6 +59,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "state":
         print({"active_faults": [fault.model_dump(mode="json") for fault in store.active()]})
+        return 0
+    if args.command == "investigate":
+        try:
+            diagnosis, events = OpsPilotAgent(get_settings(), store).investigate(
+                args.incident, args.request
+            )
+        except (KeyError, RuntimeError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        print(
+            json.dumps(
+                {"diagnosis": diagnosis.model_dump(mode="json"), "events": len(events)}, indent=2
+            )
+        )
         return 0
     print(
         f"command '{args.command}' is not implemented yet — see BUILD_STATUS.md",

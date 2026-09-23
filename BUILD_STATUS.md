@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 4 — MCP servers ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 5 — Agent runtime ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -110,6 +110,26 @@
 | Command | Result |
 | --- | --- |
 | `make test` | **47 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+
+## Phase 5 — Agent runtime
+
+### Completed
+
+- Bounded OpsPilot investigation loop with configurable step limits.
+- MCP tool discovery and dispatch into a normalized agent tool surface.
+- Deterministic mock model sequence for offline demonstrations and CI.
+- Optional OpenAI Responses API adapter for live model mode.
+- Structured diagnosis schema with confidence, evidence, remediation, and
+  approval metadata.
+- Investigation event trace containing model decisions and tool results.
+- CLI support for `opspilot investigate --incident ...`.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **49 passed** |
 | `make lint` | **ruff + format + mypy passed** |
 
 ### Tests run
