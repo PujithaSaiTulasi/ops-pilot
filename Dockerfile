@@ -13,6 +13,8 @@ RUN useradd --create-home --uid 10001 opspilot
 
 COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
+COPY scenarios ./scenarios
+COPY data/runbooks ./data/runbooks
 
 RUN pip install --no-cache-dir . \
     && mkdir -p /app/data \

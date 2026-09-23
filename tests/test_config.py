@@ -11,14 +11,9 @@ from opspilot.config import DEFAULT_APPROVAL_ACTIONS, Settings
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-#: Keys in `.env.example` consumed by Docker Compose interpolation rather than
-#: by `Settings` itself.
-COMPOSE_ONLY_KEYS = {"POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB", "POSTGRES_PORT"}
-
 REQUIRED_ENV_KEYS = {
     "OPENAI_API_KEY",
     "MOCK_LLM",
-    "DATABASE_URL",
     "REDIS_URL",
     "PAYMENT_URL",
     "INVENTORY_URL",
@@ -92,7 +87,7 @@ def test_env_example_covers_every_documented_setting() -> None:
     keys = _env_example_keys()
     settings_env_names = {name.upper() for name in Settings.model_fields}
 
-    unknown = set(keys) - settings_env_names - COMPOSE_ONLY_KEYS
+    unknown = set(keys) - settings_env_names
 
     assert not unknown, f".env.example documents unknown keys: {sorted(unknown)}"
     assert REQUIRED_ENV_KEYS <= set(keys), ".env.example is missing required keys"
