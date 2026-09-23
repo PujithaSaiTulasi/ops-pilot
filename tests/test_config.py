@@ -105,6 +105,8 @@ def test_env_example_parses_into_settings() -> None:
 
     assert settings.max_investigation_steps == 12
     assert settings.approval_timeout_seconds == 300
+    assert str(settings.approval_store_path) == "data/approvals.json"
+    assert str(settings.audit_log_path) == "data/audit.jsonl"
     assert set(settings.require_approval_for) == set(DEFAULT_APPROVAL_ACTIONS)
     api_key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else None
     assert api_key in (None, ""), "`.env.example` must not contain a real API key"

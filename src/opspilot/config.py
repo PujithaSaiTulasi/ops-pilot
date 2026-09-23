@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     #: Actions that may never execute without an explicit human approval.
     require_approval_for: list[str] = Field(default_factory=lambda: list(DEFAULT_APPROVAL_ACTIONS))
     approval_timeout_seconds: int = Field(default=300, ge=1)
+    approval_store_path: Path = Path("data/approvals.json")
+    audit_log_path: Path = Path("data/audit.jsonl")
 
     # ── Observability ───────────────────────────────────────────────────────
     enable_metrics: bool = True

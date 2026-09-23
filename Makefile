@@ -16,7 +16,7 @@ SCENARIO ?= bad_deployment
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install up down test lint inject reset state investigate eval demo clean
+.PHONY: help install up down test lint inject reset state investigate eval approve reject demo clean
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -56,6 +56,12 @@ investigate: ## Run the agent investigation loop against open incidents
 
 eval: ## Run the evaluation suite
 	$(PY) -m opspilot.cli eval
+
+approve: ## Approve an action (make approve APPROVAL_ID=APR-...)
+	$(PY) -m opspilot.cli approve --approval-id $(APPROVAL_ID)
+
+reject: ## Reject an action (make reject APPROVAL_ID=APR-...)
+	$(PY) -m opspilot.cli reject --approval-id $(APPROVAL_ID)
 
 demo: ## Run the local simulator demonstration
 	$(PY) -m opspilot.cli inject --scenario bad_deployment

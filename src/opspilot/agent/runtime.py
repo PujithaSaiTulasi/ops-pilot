@@ -8,7 +8,10 @@ from typing import Any
 
 from opspilot.agent.models import Diagnosis, Evidence, InvestigationEvent
 from opspilot.agent.tool_registry import MCPToolRegistry
+from opspilot.approval.store import ApprovalStore
+from opspilot.audit.log import AuditLogger
 from opspilot.config import Settings
+from opspilot.guardrails.policy import validate_diagnosis, validate_tool_call, validate_user_input
 from opspilot.llm.mock import MockModel
 from opspilot.llm.responses import ResponsesModel
 from opspilot.simulator.catalog import load_scenario
@@ -22,6 +25,8 @@ class OpsPilotAgent:
         self.settings = settings or Settings()
         self.store = store or FaultStore(self.settings.redis_url)
         self.registry = MCPToolRegistry(self.store)
+        self.approvals = ApprovalStore(self.settings.approval_store_path)
+        self.audit = AuditLogger(self.settings.audit_log_path)
 
     async def investigate_async(
         self, incident_id: str, request: str | None = None
@@ -38,10 +43,14 @@ class OpsPilotAgent:
             live = ResponsesModel(
                 self.settings.openai_api_key.get_secret_value(), self.settings.openai_model
             )
+        request_text = validate_user_input(request or f"Investigate incident {incident_id}.")
+        self.audit.record(
+            "investigation_started", {"incident_id": incident_id, "request": request_text}
+        )
         input_items: list[dict[str, Any]] = [
             {
                 "role": "user",
-                "content": request or f"Investigate incident {incident_id}.",
+                "content": request_text,
             }
         ]
         for _step in range(self.settings.max_investigation_steps):
@@ -57,9 +66,12 @@ class OpsPilotAgent:
                 InvestigationEvent(kind="model", name=decision.kind, payload=decision.model_dump())
             )
             if decision.kind == "final":
-                diagnosis = self._diagnosis(
-                    scenario, observations, len([e for e in events if e.kind == "tool"])
+                diagnosis = validate_diagnosis(
+                    self._diagnosis(
+                        scenario, observations, len([e for e in events if e.kind == "tool"])
+                    )
                 )
+                self.audit.record("diagnosis_produced", diagnosis.model_dump(mode="json"))
                 events.append(
                     InvestigationEvent(
                         kind="final", name="diagnosis", payload=diagnosis.model_dump(mode="json")
@@ -68,7 +80,31 @@ class OpsPilotAgent:
                 return diagnosis, events
             assert decision.tool_call is not None
             call = decision.tool_call
-            result = await self.registry.call_async(call.name, call.arguments)
+            metadata = self.registry.metadata(call.name)
+            validate_tool_call(metadata, call.arguments)
+            self.audit.record(
+                "tool_requested",
+                {
+                    "tool": call.name,
+                    "arguments": call.arguments,
+                    "approval_required": metadata.approval_required,
+                },
+            )
+            if metadata.approval_required:
+                approval = self.approvals.create(
+                    call.name,
+                    call.arguments,
+                    f"Agent requested {call.name} during {incident_id}",
+                )
+                result = {
+                    "status": "approval_required",
+                    "approval_id": approval.approval_id,
+                    "tool": call.name,
+                }
+                self.audit.record("approval_requested", approval.model_dump(mode="json"))
+            else:
+                result = await self.registry.call_async(call.name, call.arguments)
+                self.audit.record("tool_completed", {"tool": call.name, "result": result})
             observations.append({"tool": call.name, "arguments": call.arguments, "result": result})
             events.append(
                 InvestigationEvent(

@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 5 — Agent runtime ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 6 — Guardrails ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -130,6 +130,28 @@
 | Command | Result |
 | --- | --- |
 | `make test` | **49 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+
+## Phase 6 — Guardrails, approvals, and audit
+
+### Completed
+
+- Input guardrail for prompt-injection, exfiltration, and oversized requests.
+- Tool guardrail enforcing service allowlists, safe argument limits, and
+  approval identifiers for side-effecting actions.
+- Output guardrail requiring evidence and approval metadata for risky actions.
+- File-backed approval store with pending, approved, and rejected states.
+- CLI approval workflow through `approve` and `reject` commands.
+- Append-only JSONL audit log with recursive sensitive-value redaction.
+- Agent integration that records investigation, tool, approval, and diagnosis
+  events.
+- Local runtime state is ignored so approvals and audit data never enter Git.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **55 passed** |
 | `make lint` | **ruff + format + mypy passed** |
 
 ### Tests run

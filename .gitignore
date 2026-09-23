@@ -26,6 +26,8 @@ htmlcov/
 data/*.db
 data/*.db-*
 data/*.sqlite3
+data/*.json
+data/*.jsonl
 *.log
 
 # Docker bind-mount leftovers

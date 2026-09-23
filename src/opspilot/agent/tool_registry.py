@@ -52,7 +52,15 @@ class MCPToolRegistry:
         self._metadata.clear()
         for server_name, server in self.servers.items():
             for tool in await server.list_tools():
-                read_only = server_name in {"observability", "deployments", "runbooks"}
+                read_only = server_name in {
+                    "observability",
+                    "deployments",
+                    "runbooks",
+                } or tool.name in {
+                    "create_rollback_plan",
+                    "verify_recovery",
+                    "get_incident",
+                }
                 registered = RegisteredTool(
                     name=tool.name,
                     server_name=server_name,
