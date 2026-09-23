@@ -49,3 +49,15 @@ def test_simulator_can_inject_and_reset() -> None:
     response = client.post("/simulate/reset")
     assert response.status_code == 200
     assert client.get("/simulate/state").json() == {"active_faults": []}
+
+
+def test_alerts_include_active_fault_and_webhook_payload() -> None:
+    client = _client()
+    client.post("/simulate/inject", json={"scenario": "bad_deployment"})
+
+    alerts = client.get("/alerts").json()
+    assert alerts["active"][0]["labels"]["alertname"] == "bad_deployment"
+
+    response = client.post("/alerts/webhook", json={"status": "firing", "labels": {"team": "sre"}})
+    assert response.status_code == 200
+    assert response.json()["status"] == "recorded"

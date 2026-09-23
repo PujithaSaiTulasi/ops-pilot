@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 2 — Simulator ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 3 — Observability ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -68,8 +68,27 @@
 
 | Command | Result |
 | --- | --- |
-| `make test` | **41 passed** |
+| `make test` | **42 passed** |
 | `make lint` | **ruff + format + mypy passed** |
+
+## Phase 3 — Observability
+
+### Completed
+
+- Prometheus scrape jobs for the control plane and all simulated services.
+- Local alert rules for checkout latency and server errors.
+- Alert webhook receiver and active-fault alert projection at `/alerts`.
+- OpenTelemetry tracing setup with local OTLP export and test-mode isolation.
+- Jaeger and Grafana services in Compose with local-only provisioning.
+- Grafana dashboard covering request rate and checkout latency.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **42 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+| `docker compose config --quiet` | **passed** |
 
 ### Tests run
 

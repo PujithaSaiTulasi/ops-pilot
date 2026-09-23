@@ -10,10 +10,12 @@ from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
+from opentelemetry import trace
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from prometheus_client.registry import CollectorRegistry
 
 from opspilot.config import Settings
+from opspilot.observability.tracing import configure_tracing
 from opspilot.simulator.store import FaultStore
 
 LOGGER = logging.getLogger("opspilot.simulator.service")
@@ -49,6 +51,8 @@ def create_service_app(
 ) -> FastAPI:
     """Create a small service with health, metrics, and fault-aware traffic."""
     app_settings = settings or Settings()
+    configure_tracing(app_settings, service_name)
+    tracer = trace.get_tracer(f"opspilot.simulator.{service_name}")
     fault_store = store or FaultStore(app_settings.redis_url)
     metrics = ServiceMetrics(service_name)
     app = FastAPI(title=service_name)
@@ -64,7 +68,10 @@ def create_service_app(
         request.state.request_id = request_id
         status = 500
         try:
-            response = await call_next(request)
+            with tracer.start_as_current_span(f"{service_name} {request.url.path}") as span:
+                span.set_attribute("service.name", service_name)
+                span.set_attribute("http.route", request.url.path)
+                response = await call_next(request)
             status = response.status_code
             response.headers["x-request-id"] = request_id
             response.headers["x-service-version"] = app.state.version
@@ -109,8 +116,8 @@ def create_service_app(
             if "memory_pressure" in active:
                 await _sleep_ms(250)
             if downstreams:
-                await _call_dependency(downstreams.get("payment", ""), "/charge")
-                await _call_dependency(downstreams.get("inventory", ""), "/reserve")
+                await _call_dependency(downstreams.get("payment", ""), "/charge", tracer)
+                await _call_dependency(downstreams.get("inventory", ""), "/reserve", tracer)
             return {"status": "ok", "service": service_name, "version": app.state.version}
         if service_name == "payment-service" and "payment_timeout" in active:
             await _sleep_ms(int(active["payment_timeout"].details.get("timeout_ms", 3000)))
@@ -128,12 +135,14 @@ async def _sleep_ms(milliseconds: int) -> None:
     await asyncio.sleep(max(0, milliseconds) / 1000)
 
 
-async def _call_dependency(base_url: str, path: str) -> None:
+async def _call_dependency(base_url: str, path: str, tracer: trace.Tracer) -> None:
     if not base_url:
         return
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"{base_url.rstrip('/')}{path}")
+        with tracer.start_as_current_span(f"dependency {path}") as span:
+            span.set_attribute("dependency.url", f"{base_url.rstrip('/')}{path}")
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                response = await client.get(f"{base_url.rstrip('/')}{path}")
         if response.status_code >= 400:
             raise HTTPException(status_code=502, detail=f"dependency failed: {path}")
     except httpx.HTTPError as exc:

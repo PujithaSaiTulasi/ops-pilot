@@ -12,6 +12,7 @@ from starlette.responses import Response
 from opspilot import __version__
 from opspilot.config import Settings, get_settings
 from opspilot.logging import configure_logging
+from opspilot.observability.alerts import AlertStore
 from opspilot.simulator.catalog import inject_scenario, load_scenario
 from opspilot.simulator.models import InjectRequest
 from opspilot.simulator.store import FaultStore
@@ -24,6 +25,7 @@ def create_app(settings: Settings | None = None, fault_store: FaultStore | None 
 
     store = fault_store or FaultStore(app_settings.redis_url)
     registry = CollectorRegistry()
+    alert_store = AlertStore()
     inject_counter = Counter(
         "opspilot_simulator_injections_total",
         "Number of simulator scenarios activated.",
@@ -37,6 +39,7 @@ def create_app(settings: Settings | None = None, fault_store: FaultStore | None 
     )
     application.state.fault_store = store
     application.state.metrics_registry = registry
+    application.state.alert_store = alert_store
 
     @application.get("/healthz", tags=["ops"], summary="Liveness probe")
     def healthz() -> dict[str, str]:
@@ -81,5 +84,24 @@ def create_app(settings: Settings | None = None, fault_store: FaultStore | None 
     @application.get("/simulate/state", tags=["simulator"])
     def state() -> dict[str, Any]:
         return {"active_faults": [fault.model_dump(mode="json") for fault in store.active()]}
+
+    @application.get("/alerts", tags=["observability"])
+    def alerts() -> dict[str, Any]:
+        generated = [
+            {
+                "status": "firing",
+                "labels": {
+                    "alertname": fault.scenario,
+                    "service": fault.details.get("service", "unknown"),
+                },
+                "annotations": {"summary": fault.scenario.replace("_", " ")},
+            }
+            for fault in store.active()
+        ]
+        return {"active": generated, "received": alert_store.recent()}
+
+    @application.post("/alerts/webhook", tags=["observability"])
+    def alert_webhook(payload: dict[str, Any]) -> dict[str, Any]:
+        return {"status": "recorded", "alert": alert_store.record(payload)}
 
     return application

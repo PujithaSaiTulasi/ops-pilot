@@ -16,13 +16,15 @@ processors:
 exporters:
   debug:
     verbosity: basic
+  otlphttp/jaeger:
+    endpoint: http://jaeger:4318
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug]
+      exporters: [debug, otlphttp/jaeger]
     metrics:
       receivers: [otlp]
       processors: [batch]
