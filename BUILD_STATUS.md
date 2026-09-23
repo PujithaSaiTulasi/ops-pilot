@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 6 — Guardrails ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 7 — Remediation ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -153,6 +153,26 @@
 | --- | --- |
 | `make test` | **55 passed** |
 | `make lint` | **ruff + format + mypy passed** |
+
+## Phase 7 — Remediation and verification
+
+### Completed
+
+- End-to-end remediation workflow that investigates, prepares a rollback plan,
+  creates an approval request, pauses, resumes after approval, and verifies
+  recovery independently.
+- Rejected approvals leave the simulated incident active.
+- Successful rollback clears the simulator fault and checks the recovery state.
+- `remediate`, `resume`, and `demo` CLI commands plus Make targets.
+- Demo path proves the action result is not treated as verification evidence.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **57 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+| `make demo` | **resolved with verified recovery** |
 
 ### Tests run
 

@@ -8,6 +8,7 @@ import sys
 from collections.abc import Sequence
 
 from opspilot.agent.runtime import OpsPilotAgent
+from opspilot.agent.workflow import RemediationWorkflow
 from opspilot.approval.store import ApprovalStore
 from opspilot.config import get_settings
 from opspilot.simulator.catalog import inject_scenario
@@ -43,6 +44,16 @@ def build_parser() -> argparse.ArgumentParser:
     approve.add_argument("--approval-id", required=True)
     reject = subparsers.add_parser("reject", help="Reject a pending side effect")
     reject.add_argument("--approval-id", required=True)
+
+    remediate = subparsers.add_parser("remediate", help="Prepare an approval-gated remediation")
+    remediate.add_argument("--incident", default="bad_deployment")
+    remediate.add_argument(
+        "--approve", action="store_true", help="Approve immediately for a local demo"
+    )
+    resume = subparsers.add_parser("resume", help="Resume an approved remediation")
+    resume.add_argument("--approval-id", required=True)
+    demo = subparsers.add_parser("demo", help="Run the complete local investigation demo")
+    demo.add_argument("--incident", default="bad_deployment")
 
     return parser
 
@@ -89,6 +100,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(str(exc), file=sys.stderr)
             return 2
         print(json.dumps(request.model_dump(mode="json"), indent=2))
+        return 0
+    if args.command == "remediate":
+        workflow = RemediationWorkflow(get_settings(), store)
+        result = workflow.prepare(args.incident)
+        if args.approve and result.approval_id:
+            ApprovalStore(get_settings().approval_store_path).decide(result.approval_id, True)
+            result = workflow.resume(result.approval_id)
+        print(json.dumps(result.model_dump(mode="json"), indent=2))
+        return 0
+    if args.command == "resume":
+        result = RemediationWorkflow(get_settings(), store).resume(args.approval_id)
+        print(json.dumps(result.model_dump(mode="json"), indent=2))
+        return 0
+    if args.command == "demo":
+        inject_scenario(args.incident, store, get_settings().scenario_dir)
+        workflow = RemediationWorkflow(get_settings(), store)
+        prepared = workflow.prepare(args.incident)
+        assert prepared.approval_id is not None
+        ApprovalStore(get_settings().approval_store_path).decide(prepared.approval_id, True)
+        result = workflow.resume(prepared.approval_id)
+        print(json.dumps(result.model_dump(mode="json"), indent=2))
         return 0
     print(
         f"command '{args.command}' is not implemented yet — see BUILD_STATUS.md",
