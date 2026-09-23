@@ -1,1 +1,1 @@
-"""Tool registry: read-only tools separated from side-effecting tools (planned)."""
+"""Tool registry with read-only and side-effecting capabilities separated."""

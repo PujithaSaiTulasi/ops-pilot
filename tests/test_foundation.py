@@ -11,7 +11,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_FILES = [
     "README.md",
-    "BUILD_STATUS.md",
     "pyproject.toml",
     ".env.example",
     ".gitignore",
@@ -46,7 +45,6 @@ REQUIRED_COMPOSE_SERVICES = {
     "checkout",
     "payment",
     "inventory",
-    "db",
     "redis",
     "prometheus",
     "otel-collector",
@@ -111,9 +109,8 @@ def test_compose_defines_the_full_stack() -> None:
 
     assert REQUIRED_COMPOSE_SERVICES <= set(services)
     assert "build" in services["api"]
-    assert services["db"].get("healthcheck"), "db needs a healthcheck"
     assert services["redis"].get("healthcheck"), "redis needs a healthcheck"
-    assert set(compose["volumes"]) >= {"pgdata", "promdata"}
+    assert set(compose["volumes"]) >= {"promdata"}
 
 
 def test_compose_override_enables_dev_reload() -> None:
@@ -146,6 +143,14 @@ def test_dockerfile_runs_as_non_root_with_healthcheck() -> None:
     assert "HEALTHCHECK" in dockerfile
     assert "\nUSER " in dockerfile, "container must not run as root"
     assert "python:3.12" in dockerfile
+    assert "COPY scenarios ./scenarios" in dockerfile
+    assert "COPY data/runbooks ./data/runbooks" in dockerfile
+
+
+def test_legacy_scaffold_is_absent() -> None:
+    assert not (REPO_ROOT / "src/ops_pilot").exists()
+    assert not (REPO_ROOT / "prometheus").exists()
+    assert not (REPO_ROOT / "otelcol").exists()
 
 
 def test_no_hardcoded_credentials_in_source() -> None:

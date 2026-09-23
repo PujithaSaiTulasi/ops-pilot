@@ -10,5 +10,5 @@ Scenarios are plain YAML files named `<scenario>.yaml`. Each scenario describes:
 - the expected root cause and remediation
 - which side-effecting actions (if any) a correct investigation should propose
 
-> **Status:** scenario schema and loading are not implemented yet (see
-> `BUILD_STATUS.md`). This README documents the intended contract.
+The schema is loaded and validated by the local simulator. Each scenario can be
+injected with `make inject SCENARIO=<scenario-id>` and replayed by `make eval`.

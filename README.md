@@ -6,10 +6,9 @@ tool servers, reasons about root cause, and proposes remediations — behind
 guardrails, human approval, audit logs, structured observability, and
 repeatable evaluations.
 
-> **Status: core implementation complete; CI, docs, and final hardening included.**
-> Progress, test runs, and remaining work live in [`BUILD_STATUS.md`](./BUILD_STATUS.md).
-> Nothing described here is claimed to work until it appears under "Tests run"
-> in that file.
+> **Status: core implementation complete.** The deterministic test suite,
+> evaluation suite, lint/type checks, Compose validation, and local remediation
+> demo all run without production credentials.
 
 ## Principles
 
@@ -31,7 +30,7 @@ repeatable evaluations.
 ```
                      ┌─────────────────────────────────────────────────┐
                      │            OpsPilot API (FastAPI)              │
-                     │     /healthz  /incidents  /approvals  /audit   │
+                     │ /healthz  /simulate/*  /alerts  /metrics        │
                      └───────────────┬─────────────────────────────────┘
                                      │
         ┌────────────────────────────┼──────────────────────────────┐
@@ -46,14 +45,14 @@ repeatable evaluations.
                     tools      │            │ tools                 │
                  ┌─────────────▼──┐   ┌─────▼─────────────┐  ┌──────▼──────────┐
                  │ MCP: metrics,  │   │ MCP: rollback,    │  │  Audit Log      │
-                 │ logs, deploys, │   │ restart, deploy,  │  │ (PostgreSQL /   │
-                 │ traces (free)  │   │ delete, notify    │  │  SQLite)        │
+                 │ logs, deploys, │   │ restart, deploy,  │  │  JSONL audit    │
+                 │ traces (free)  │   │ delete, notify    │  │    log          │
                  └────────────────┘   │ (approval-gated)  │  └─────────────────┘
                                       └───────────────────┘
    Observability across every layer: JSON logs · Prometheus · OpenTelemetry
 ```
 
-**Investigation flow (planned):**
+**Investigation flow:**
 
 1. `make inject SCENARIO=bad_deployment` seeds a deterministic incident.
 2. `make investigate` runs the agent loop: plan → tool calls → observations.
@@ -70,8 +69,8 @@ repeatable evaluations.
 | API            | FastAPI + Uvicorn                                         |
 | Schemas        | Pydantic v2 (typed schemas for every tool and payload)    |
 | Agent I/O      | Official MCP Python SDK + official OpenAI Python SDK      |
-| Storage        | SQLite (default/tests) · PostgreSQL (Compose stack)       |
-| Shared state   | Redis (simulator/approval state across processes)         |
+| Local state    | JSON approval store + append-only JSONL audit log          |
+| Shared state   | Redis-backed simulator with an in-memory test fallback     |
 | Metrics        | Prometheus + `/metrics`                                   |
 | Traces         | OpenTelemetry → local OTLP collector                      |
 | Logs           | JSON structured logging (stdlib, one object per line)     |
@@ -86,7 +85,7 @@ cp .env.example .env   # mock mode is ON by default — no API key needed
 make install           # Python 3.12 venv + dependencies
 make test              # run the test-suite with coverage
 make lint              # ruff lint, ruff format check, mypy
-make up                # api + postgres + redis + prometheus + otel-collector
+make up                # API, simulated services, Redis, and local observability
 ```
 
 Open:
@@ -137,7 +136,6 @@ Key switches:
 | ----------------- | ------------------------ | ------------------------------------------ |
 | `MOCK_LLM`        | `true`                   | Deterministic agent, no API key/network    |
 | `OPENAI_API_KEY`  | *(empty)*                | Only needed when `MOCK_LLM=false`          |
-| `DATABASE_URL`    | SQLite file              | Swap to PostgreSQL for the Compose stack   |
 | `LOG_FORMAT`      | `json`                   | `json` for machines, `console` for humans  |
 | `REQUIRE_APPROVAL_FOR` | rollback, restart, deploy, delete, notify | Approval-gated actions      |
 
@@ -147,7 +145,7 @@ Key switches:
 ops-pilot/
 ├── Makefile                  # install / up / down / test / lint / inject / ...
 ├── pyproject.toml            # deps, pytest, ruff, mypy, coverage config
-├── docker-compose.yml        # base stack: api, db, redis, prometheus, otel
+├── docker-compose.yml        # API, simulated services, Redis, and observability
 ├── docker-compose.override.yml  # dev hot-reload
 ├── Dockerfile                # python:3.12-slim, non-root, healthcheck
 ├── .env.example              # every env var, no secrets
@@ -155,7 +153,7 @@ ops-pilot/
 ├── docs/                     # architecture, demo, and threat model
 ├── RESUME.md                 # resume bullet and interview talking points
 ├── scenarios/                # simulated incidents (YAML)
-├── data/                     # local SQLite state (gitignored)
+├── data/                     # runbooks plus local ignored runtime state
 ├── src/opspilot/
 │   ├── config.py             # typed environment settings
 │   ├── logging.py            # JSON structured logging
