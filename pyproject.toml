@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ops-pilot"
+version = "0.1.0"
+description = "OpsPilot - an agentic incident-response platform with MCP tools, guardrails, approvals, audit logs, and evaluations."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "OpsPilot Team" }]
+keywords = ["incident-response", "agentic", "mcp", "sre", "fastapi"]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "python-dotenv>=1.0",
+    "structlog>=24.4",
+    "httpx>=0.27",
+    "sqlalchemy>=2.0",
+    "aiosqlite>=0.20",
+    "psycopg[binary]>=3.2",
+    "redis>=5.0",
+    "prometheus-client>=0.21",
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "openai>=1.40",
+    "mcp>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "pyyaml>=6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+asyncio_mode = "auto"
+markers = [
+    "unit: fast, hermetic tests with no external services",
+    "integration: tests that need Docker services (postgres, redis)",
+    "eval: evaluation-harness tests",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [".git", ".venv", "__pycache__", "dist", "build", "*.egg-info"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ops_pilot"]
+
+[tool.coverage.run]
+source = ["src/ops_pilot"]
+branch = true

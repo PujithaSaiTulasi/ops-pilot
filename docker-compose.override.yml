@@ -1,0 +1,10 @@
+# Local development overrides — auto-merged by `docker compose up`.
+# Adds live code reload and drops the external publish of the OTLP port noise.
+services:
+  api:
+    command: ["uvicorn", "ops_pilot.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./src:/app/src:ro
+    environment:
+      ENVIRONMENT: dev
+      MOCK_LLM: ${MOCK_LLM:-true}
