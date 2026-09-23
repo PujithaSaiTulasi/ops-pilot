@@ -1,0 +1,17 @@
+scenario_id: bad_deployment
+title: Checkout latency after a bad deployment
+description: A new checkout release introduces a latency regression.
+affected_services:
+  - checkout-api
+symptoms:
+  - checkout p95 latency is elevated
+  - deployment occurred recently
+root_cause: checkout version 1.1.0 introduced a latency regression
+safe_remediation: rollback checkout-api to version 1.0.0
+verification:
+  - checkout p95 latency below 300ms
+  - active version is 1.0.0
+fault_details:
+  service: checkout-api
+  version: 1.1.0
+  latency_ms: 750

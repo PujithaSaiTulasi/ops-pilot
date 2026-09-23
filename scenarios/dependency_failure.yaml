@@ -1,0 +1,15 @@
+scenario_id: dependency_failure
+title: External dependency failure
+description: A simulated downstream dependency is unavailable.
+affected_services:
+  - checkout-api
+symptoms:
+  - dependency requests fail
+  - checkout errors increase
+root_cause: downstream dependency unavailable
+safe_remediation: restore downstream dependency
+verification:
+  - dependency errors return to baseline
+fault_details:
+  service: checkout-api
+  dependency: external

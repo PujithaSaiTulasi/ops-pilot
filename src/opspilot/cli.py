@@ -1,15 +1,14 @@
-"""OpsPilot command-line interface.
-
-Foundation stub: argument parsing and exit codes are wired up so the Makefile
-targets exist and are testable. Commands print a clear "not implemented"
-message until their feature phase lands (see ``BUILD_STATUS.md``).
-"""
+"""OpsPilot command-line interface."""
 
 from __future__ import annotations
 
 import argparse
 import sys
 from collections.abc import Sequence
+
+from opspilot.config import get_settings
+from opspilot.simulator.catalog import inject_scenario
+from opspilot.simulator.store import FaultStore
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -27,6 +26,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Scenario id to inject (e.g. bad_deployment)",
     )
 
+    subparsers.add_parser("reset", help="Reset all simulated incidents")
+    subparsers.add_parser("state", help="Show active simulated incidents")
+
     subparsers.add_parser("investigate", help="Run the agent investigation loop")
 
     evaluate = subparsers.add_parser("eval", help="Run the evaluation suite")
@@ -38,9 +40,24 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point. Returns a process exit code."""
     args = build_parser().parse_args(argv)
+    store = FaultStore(get_settings().redis_url)
+    if args.command == "inject":
+        try:
+            scenario = inject_scenario(args.scenario, store, get_settings().scenario_dir)
+        except KeyError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        print(f"activated {scenario.scenario_id}: {scenario.title}")
+        return 0
+    if args.command == "reset":
+        store.clear_all()
+        print("simulator reset")
+        return 0
+    if args.command == "state":
+        print({"active_faults": [fault.model_dump(mode="json") for fault in store.active()]})
+        return 0
     print(
-        f"command '{args.command}' is not implemented yet — foundation phase only "
-        "(see BUILD_STATUS.md)",
+        f"command '{args.command}' is not implemented yet — see BUILD_STATUS.md",
         file=sys.stderr,
     )
     return 1

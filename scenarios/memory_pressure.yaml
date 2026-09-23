@@ -1,0 +1,15 @@
+scenario_id: memory_pressure
+title: Checkout memory pressure
+description: Checkout memory usage grows above the alert threshold.
+affected_services:
+  - checkout-api
+symptoms:
+  - memory usage is elevated
+  - latency is increasing
+root_cause: checkout-api memory pressure
+safe_remediation: restart checkout-api after approval
+verification:
+  - memory usage below 80%
+fault_details:
+  service: checkout-api
+  memory_usage: 0.95

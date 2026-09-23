@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 1 — Foundation ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 2 — Simulator ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -48,6 +48,28 @@
 - Placeholder packages for planned components: `agent`, `mcp`, `tools`,
   `guardrails`, `approval`, `audit`, `llm`, `simulator`, `evals`,
   `observability`.
+
+## Phase 2 — Simulated production environment
+
+### Completed
+
+- Deterministic scenario catalog with six incident types and YAML ground truth.
+- Shared `FaultStore` with Redis support and an in-memory test fallback.
+- Checkout, payment, and inventory FastAPI services with health endpoints,
+  structured request logs, service-version headers, and isolated Prometheus metrics.
+- Fault-aware request behavior for latency regressions, dependency timeouts,
+  dependency errors, database pressure, memory pressure, and dependency failure.
+- OpsPilot control-plane endpoints for scenario listing, injection, reset, state,
+  and metrics.
+- Docker Compose service entries for the three simulated production services.
+- CLI commands for `inject`, `reset`, and `state`.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **41 passed** |
+| `make lint` | **ruff + format + mypy passed** |
 
 ### Tests run
 

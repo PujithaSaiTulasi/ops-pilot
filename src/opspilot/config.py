@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     # ── Storage ─────────────────────────────────────────────────────────────
     database_url: str = "sqlite+aiosqlite:///./data/opspilot.db"
     redis_url: str = "redis://localhost:6379/0"
+    payment_url: str = "http://localhost:8002"
+    inventory_url: str = "http://localhost:8003"
+    service_version: str = "1.0.0"
 
     # ── Incident simulator ──────────────────────────────────────────────────
     scenario_dir: Path = Path("scenarios")

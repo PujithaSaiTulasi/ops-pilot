@@ -37,7 +37,16 @@ REQUIRED_MAKE_TARGETS = {
     "clean",
 }
 
-REQUIRED_COMPOSE_SERVICES = {"api", "db", "redis", "prometheus", "otel-collector"}
+REQUIRED_COMPOSE_SERVICES = {
+    "api",
+    "checkout",
+    "payment",
+    "inventory",
+    "db",
+    "redis",
+    "prometheus",
+    "otel-collector",
+}
 
 #: Patterns that must never appear in source code.
 FORBIDDEN_PATTERNS = [

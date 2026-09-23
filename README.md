@@ -6,7 +6,7 @@ tool servers, reasons about root cause, and proposes remediations — behind
 guardrails, human approval, audit logs, structured observability, and
 repeatable evaluations.
 
-> **Status: foundation complete, application logic still to be built.**
+> **Status: simulator phase complete; MCP and agent phases are next.**
 > Progress, test runs, and remaining work live in [`BUILD_STATUS.md`](./BUILD_STATUS.md).
 > Nothing described here is claimed to work until it appears under "Tests run"
 > in that file.
@@ -93,6 +93,14 @@ Open:
 
 - API: <http://localhost:8000> (docs at `/docs`, probe at `/healthz`)
 - Prometheus: <http://localhost:9090>
+
+To inject and inspect a deterministic incident locally:
+
+```bash
+make inject SCENARIO=bad_deployment
+make state
+make reset
+```
 
 To use a real model instead of mock mode, set `MOCK_LLM=false` and provide
 `OPENAI_API_KEY` in `.env` (never commit it).

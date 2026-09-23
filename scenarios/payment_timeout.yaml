@@ -1,0 +1,17 @@
+scenario_id: payment_timeout
+title: Payment dependency timeout
+description: The payment service starts timing out requests.
+affected_services:
+  - payment-service
+  - checkout-api
+symptoms:
+  - payment timeout rate is elevated
+  - checkout errors increase
+root_cause: payment-service dependency timeout
+safe_remediation: restore payment-service timeout behavior
+verification:
+  - payment timeout rate is zero
+  - checkout succeeds
+fault_details:
+  service: payment-service
+  timeout_ms: 3000

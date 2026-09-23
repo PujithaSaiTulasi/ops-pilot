@@ -38,6 +38,62 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  checkout:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opspilot-api:local
+    command: ["uvicorn", "opspilot.services.checkout:app", "--host=0.0.0.0", "--port=8000"]
+    ports:
+      - "8001:8000"
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      REDIS_URL: redis://redis:6379/0
+      PAYMENT_URL: http://payment:8000
+      INVENTORY_URL: http://inventory:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  payment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opspilot-api:local
+    command: ["uvicorn", "opspilot.services.payment:app", "--host=0.0.0.0", "--port=8000"]
+    ports:
+      - "8002:8000"
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  inventory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opspilot-api:local
+    command: ["uvicorn", "opspilot.services.inventory:app", "--host=0.0.0.0", "--port=8000"]
+    ports:
+      - "8003:8000"
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   # PostgreSQL for shared/local stack runs. SQLite remains the zero-dependency
   # default for unit tests and bare `make test` runs.
   db:

@@ -16,7 +16,7 @@ SCENARIO ?= bad_deployment
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install up down test lint inject investigate eval clean
+.PHONY: help install up down test lint inject reset state investigate eval demo clean
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -45,11 +45,21 @@ lint: ## Static checks: ruff lint, ruff format check, mypy
 inject: ## Inject a simulated incident (make inject SCENARIO=bad_deployment)
 	$(PY) -m opspilot.cli inject --scenario $(SCENARIO)
 
+reset: ## Reset all simulated incidents
+	$(PY) -m opspilot.cli reset
+
+state: ## Show active simulated incidents
+	$(PY) -m opspilot.cli state
+
 investigate: ## Run the agent investigation loop against open incidents
 	$(PY) -m opspilot.cli investigate
 
 eval: ## Run the evaluation suite
 	$(PY) -m opspilot.cli eval
+
+demo: ## Run the local simulator demonstration
+	$(PY) -m opspilot.cli inject --scenario bad_deployment
+	$(PY) -m opspilot.cli state
 
 clean: ## Remove caches and build artifacts (keeps .venv and local data)
 	rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage coverage.xml htmlcov dist build
