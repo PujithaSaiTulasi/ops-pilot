@@ -54,6 +54,28 @@ def test_approval_store_requires_pending_decision(tmp_path) -> None:
         store.decide(request.approval_id, False)
 
 
+def test_approval_is_bound_to_exact_action_arguments(tmp_path) -> None:
+    store = ApprovalStore(tmp_path / "approvals.json")
+    request = store.create("rollback_deployment", {"deployment_id": "deploy-001"}, "review")
+    store.decide(request.approval_id, True)
+
+    with pytest.raises(ValueError, match="arguments do not match"):
+        store.validate_for_action(
+            request.approval_id,
+            "rollback_deployment",
+            {"deployment_id": "deploy-000"},
+        )
+
+
+def test_expired_approval_cannot_be_used(tmp_path) -> None:
+    store = ApprovalStore(tmp_path / "approvals.json")
+    request = store.create(
+        "rollback_deployment", {"deployment_id": "deploy-001"}, "review", ttl_seconds=-1
+    )
+
+    assert store.get(request.approval_id).status == "expired"
+
+
 def test_audit_logger_redacts_sensitive_values(tmp_path) -> None:
     audit = AuditLogger(tmp_path / "audit.jsonl")
     audit.record("tool_requested", {"token": "secret", "nested": {"password": "hidden"}})
@@ -61,6 +83,7 @@ def test_audit_logger_redacts_sensitive_values(tmp_path) -> None:
     record = audit.read()[0]
     assert record["payload"]["token"] == "[REDACTED]"
     assert record["payload"]["nested"]["password"] == "[REDACTED]"
+    assert audit.verify_chain() is True
 
 
 def test_output_guardrail_marks_side_effecting_recommendation() -> None:

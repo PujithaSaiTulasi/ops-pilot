@@ -23,7 +23,7 @@ def create_app(settings: Settings | None = None, fault_store: FaultStore | None 
     app_settings = settings or get_settings()
     configure_logging(level=app_settings.log_level, fmt=app_settings.log_format)
 
-    store = fault_store or FaultStore(app_settings.redis_url)
+    store = fault_store or FaultStore(app_settings.redis_url, app_settings.simulator_state_path)
     registry = CollectorRegistry()
     alert_store = AlertStore()
     inject_counter = Counter(

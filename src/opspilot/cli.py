@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
 from collections.abc import Sequence
 
 from opspilot.agent.runtime import OpsPilotAgent
+from opspilot.agent.tool_registry import MCPToolRegistry
 from opspilot.agent.workflow import RemediationWorkflow
 from opspilot.approval.store import ApprovalStore
 from opspilot.config import get_settings
@@ -55,6 +57,9 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("--approval-id", required=True)
     demo = subparsers.add_parser("demo", help="Run the complete local investigation demo")
     demo.add_argument("--incident", default="bad_deployment")
+    subparsers.add_parser(
+        "mcp-discover", help="Discover tool schemas from the configured MCP transport"
+    )
 
     return parser
 
@@ -62,7 +67,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point. Returns a process exit code."""
     args = build_parser().parse_args(argv)
-    store = FaultStore(get_settings().redis_url)
+    settings = get_settings()
+    store = FaultStore(settings.redis_url, settings.simulator_state_path)
     if args.command == "inject":
         try:
             scenario = inject_scenario(args.scenario, store, get_settings().scenario_dir)
@@ -122,6 +128,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         ApprovalStore(get_settings().approval_store_path).decide(prepared.approval_id, True)
         result = workflow.resume(prepared.approval_id)
         print(json.dumps(result.model_dump(mode="json"), indent=2))
+        return 0
+    if args.command == "mcp-discover":
+        registry = MCPToolRegistry(settings=settings)
+
+        async def discover_and_close() -> list[dict[str, object]]:
+            try:
+                tools = await registry.discover_async()
+                return [
+                    {
+                        "server": tool.server_name,
+                        "name": tool.name,
+                        "read_only": tool.read_only,
+                        "approval_required": tool.approval_required,
+                    }
+                    for tool in tools
+                ]
+            finally:
+                await registry.aclose()
+
+        print(json.dumps(asyncio.run(discover_and_close()), indent=2))
         return 0
     if args.command == "eval":
         eval_result = run_suite()

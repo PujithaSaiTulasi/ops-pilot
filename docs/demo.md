@@ -9,17 +9,28 @@ make lint
 make eval
 ```
 
-## Complete local demo
+## In-process demo
 
 ```bash
 MOCK_LLM=true REDIS_URL= OTEL_TRACES_EXPORTER=none make demo
 ```
 
-The demo injects `bad_deployment`, investigates it through MCP, creates an
-approval request, approves the request as an explicit local demo action,
-executes the simulated rollback, and checks that simulator faults were cleared.
-Diagnosis fields come from the fixture's expected answer. This is a workflow
-demonstration, not an evaluation of live-model reasoning or live service recovery.
+This runs the LangGraph investigation, discovers the MCP contracts, gathers
+simulated evidence, creates an approval, auto-approves the local demo action,
+executes the simulated rollback, and verifies recovery. The diagnosis is
+derived from the collected evidence by the deterministic offline model.
+
+## Separate MCP server demo
+
+```bash
+MCP_TRANSPORT=stdio REDIS_URL= OTEL_TRACES_EXPORTER=none make mcp-discover
+MCP_TRANSPORT=stdio REDIS_URL= OTEL_TRACES_EXPORTER=none make demo
+```
+
+The first command starts five independent MCP child processes and prints the
+discovered tools and approval metadata. The second runs the end-to-end workflow
+over those processes. When Redis is empty, `SIMULATOR_STATE_PATH` is the shared
+fallback used by the parent and child processes.
 
 ## Manual approval flow
 
@@ -31,12 +42,11 @@ make approve APPROVAL_ID=APR-...
 make resume APPROVAL_ID=APR-...
 ```
 
-Replace `APR-...` with the ID printed by `remediate`. This multi-command flow
-requires Redis on the configured `REDIS_URL`; the memory fallback does not
-persist faults across processes. The current remediation workflow supports
-`bad_deployment`. To reject its action, use `make reject APPROVAL_ID=APR-...`.
+Replace `APR-...` with the ID printed by `remediate`. The mutating MCP tool
+validates that the approval is approved, unexpired, intended for the exact
+deployment, and unused. To reject the action, use `make reject APPROVAL_ID=APR-...`.
 
-To start the observability stack:
+## Local service stack
 
 ```bash
 make up
@@ -51,3 +61,7 @@ Then open:
 - Prometheus: <http://localhost:9090>
 - Grafana: <http://localhost:3000>
 - Jaeger: <http://localhost:16686>
+
+The local services emit Prometheus metrics and OpenTelemetry traces. The
+current MCP observability backend remains simulator-backed; replacing it with
+Prometheus/Loki/Jaeger adapters is the next production-oriented phase.

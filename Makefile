@@ -16,7 +16,7 @@ SCENARIO ?= bad_deployment
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install up down test lint inject reset state investigate eval approve reject remediate resume demo clean
+.PHONY: help install up down test lint inject reset state investigate eval approve reject remediate resume demo mcp-discover clean
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -69,8 +69,11 @@ remediate: ## Prepare remediation (make remediate INCIDENT=bad_deployment)
 resume: ## Resume approved remediation (make resume APPROVAL_ID=APR-...)
 	$(PY) -m opspilot.cli resume --approval-id $(APPROVAL_ID)
 
-demo: ## Run the local simulator demonstration
-	$(PY) -m opspilot.cli demo --incident bad_deployment
+demo: ## Run the local simulator demonstration (MCP_TRANSPORT=in_process by default)
+	MCP_TRANSPORT=$${MCP_TRANSPORT:-in_process} $(PY) -m opspilot.cli demo --incident bad_deployment
+
+mcp-discover: ## Start separate stdio MCP processes and print their discovered tools
+	MCP_TRANSPORT=stdio $(PY) -m opspilot.cli mcp-discover
 
 clean: ## Remove caches and build artifacts (keeps .venv and local data)
 	rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage coverage.xml htmlcov dist build

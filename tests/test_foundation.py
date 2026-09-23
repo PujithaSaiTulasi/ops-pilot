@@ -42,6 +42,7 @@ REQUIRED_MAKE_TARGETS = {
     "inject",
     "investigate",
     "eval",
+    "mcp-discover",
     "clean",
 }
 
@@ -177,6 +178,7 @@ def test_dockerfile_runs_as_non_root_with_healthcheck() -> None:
     assert "python:3.12" in dockerfile
     assert "COPY scenarios ./scenarios" in dockerfile
     assert "COPY data/runbooks ./data/runbooks" in dockerfile
+    assert "COPY ops/mcp/servers.json ./ops/mcp/servers.json" in dockerfile
 
 
 def test_legacy_scaffold_is_absent() -> None:
