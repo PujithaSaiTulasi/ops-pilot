@@ -6,7 +6,7 @@ tool servers, reasons about root cause, and proposes remediations — behind
 guardrails, human approval, audit logs, structured observability, and
 repeatable evaluations.
 
-> **Status: simulator phase complete; MCP and agent phases are next.**
+> **Status: core implementation complete; CI, docs, and final hardening included.**
 > Progress, test runs, and remaining work live in [`BUILD_STATUS.md`](./BUILD_STATUS.md).
 > Nothing described here is claimed to work until it appears under "Tests run"
 > in that file.
@@ -93,6 +93,8 @@ Open:
 
 - API: <http://localhost:8000> (docs at `/docs`, probe at `/healthz`)
 - Prometheus: <http://localhost:9090>
+- Grafana: <http://localhost:3000>
+- Jaeger: <http://localhost:16686>
 
 To inject and inspect a deterministic incident locally:
 
@@ -119,8 +121,8 @@ To use a real model instead of mock mode, set `MOCK_LLM=false` and provide
 | `make eval`                      | Run the evaluation suite                                |
 | `make clean`                     | Remove caches/build artifacts (keeps `.venv` and data)  |
 
-> `inject`, `investigate`, and `eval` are wired to the CLI but intentionally
-> exit non-zero until their implementation phases land — see `BUILD_STATUS.md`.
+`inject`, `investigate`, `eval`, and `demo` run in deterministic mock mode by
+default, so the repository can be evaluated without credentials.
 
 ## Configuration
 
@@ -149,7 +151,9 @@ ops-pilot/
 ├── docker-compose.override.yml  # dev hot-reload
 ├── Dockerfile                # python:3.12-slim, non-root, healthcheck
 ├── .env.example              # every env var, no secrets
-├── ops/                      # prometheus + otel-collector configs
+├── ops/                      # Prometheus, Grafana, OTEL, MCP registry
+├── docs/                     # architecture, demo, and threat model
+├── RESUME.md                 # resume bullet and interview talking points
 ├── scenarios/                # simulated incidents (YAML)
 ├── data/                     # local SQLite state (gitignored)
 ├── src/opspilot/
@@ -157,16 +161,15 @@ ops-pilot/
 │   ├── logging.py            # JSON structured logging
 │   ├── cli.py                # CLI entry point
 │   ├── api/                  # FastAPI app factory
-│   ├── agent/                # investigation loop          (planned)
-│   ├── mcp/                  # MCP server integrations     (planned)
-│   ├── tools/                # read-only vs side-effecting (planned)
-│   ├── guardrails/           # budgets and policy checks   (planned)
-│   ├── approval/             # human-in-the-loop gate      (planned)
-│   ├── audit/                # append-only audit log       (planned)
-│   ├── llm/                  # OpenAI SDK + mock mode      (planned)
-│   ├── simulator/            # incident injection          (planned)
-│   ├── evals/                # evaluation suites           (planned)
-│   └── observability/        # metrics + traces            (planned)
+│   ├── agent/                # investigation and remediation workflows
+│   ├── mcp/                  # MCP server integrations
+│   ├── guardrails/           # input, tool, and output policy checks
+│   ├── approval/             # human-in-the-loop gate
+│   ├── audit/                # append-only audit log
+│   ├── llm/                  # OpenAI Responses + mock mode
+│   ├── simulator/            # incident injection and shared state
+│   ├── evals/                # deterministic evaluation suite
+│   └── observability/        # metrics, alerts, and traces
 └── tests/                    # pytest suite for every component
 ```
 
@@ -180,14 +183,14 @@ ops-pilot/
 ## Roadmap
 
 1. ✅ Foundation — structure, config, Compose, Makefile, tests.
-2. Incident simulator + scenario schema.
-3. MCP servers (read-only observability tools) + typed tool registry.
-4. LLM client with deterministic mock mode + investigation agent loop.
-5. Guardrails + human approval gate.
-6. Audit log (SQLite/PostgreSQL) + API endpoints.
-7. Observability: Prometheus metrics + OpenTelemetry traces.
-8. Evaluation suite + scenario scoring.
-9. End-to-end hardening: docs, seed data, final test pass.
+2. ✅ Incident simulator + scenario schema.
+3. ✅ MCP servers + typed tool registry.
+4. ✅ LLM client with deterministic mock mode + investigation loop.
+5. ✅ Guardrails + human approval gate + audit log.
+6. ✅ Approval-gated remediation and independent recovery verification.
+7. ✅ Prometheus, OpenTelemetry, Grafana, Jaeger, and alerts.
+8. ✅ Evaluation suite with scenario scoring.
+9. ✅ CI, architecture docs, threat model, demo guide, and resume notes.
 
 ## License
 

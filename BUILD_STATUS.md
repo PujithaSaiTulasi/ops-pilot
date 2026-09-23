@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 8 — Evaluations ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 9 — Hardening ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -194,6 +194,29 @@
 | `make test` | **57 passed** |
 | `make lint` | **ruff + format + mypy passed** |
 | `make eval` | **10/10 passed; 100% pass rate; 0% unauthorized actions** |
+
+## Phase 9 — CI, documentation, and final hardening
+
+### Completed
+
+- GitHub Actions workflow for tests, lint/type checks, eval regression, and
+  Compose validation.
+- Architecture diagram and MCP boundary documentation.
+- Threat model covering prompt injection, tool misuse, approval bypass, data
+  leakage, compromised MCP servers, and false recovery claims.
+- Exact local demo and manual approval instructions.
+- Resume bullet and interview talking points grounded in measured results.
+- Final clean-stack checks completed without production credentials.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **57 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+| `make eval` | **10/10 passed; 100% pass rate; 0% unauthorized actions** |
+| `docker compose config --quiet` | **passed** |
+| `make demo` | **resolved with independently verified recovery** |
 
 ### Tests run
 
