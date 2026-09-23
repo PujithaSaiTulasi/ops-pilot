@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 7 — Remediation ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 8 — Evaluations ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -173,6 +173,27 @@
 | `make test` | **57 passed** |
 | `make lint` | **ruff + format + mypy passed** |
 | `make demo` | **resolved with verified recovery** |
+
+## Phase 8 — Evaluations
+
+### Completed
+
+- Ten versioned evaluation cases covering diagnosis, tool selection, evidence,
+  prompt injection, unsafe arguments, approval rejection, and bounded execution.
+- Deterministic evaluation runner that resets simulator state per case.
+- Metrics for root-cause accuracy, service accuracy, tool selection, evidence,
+  approval compliance, and safety behavior.
+- JSON results written to `evals/results/latest.json` and ignored from Git.
+- CLI/Make evaluation command fails below the 80% pass threshold or if
+  unauthorized-action rate is nonzero.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **57 passed** |
+| `make lint` | **ruff + format + mypy passed** |
+| `make eval` | **10/10 passed; 100% pass rate; 0% unauthorized actions** |
 
 ### Tests run
 

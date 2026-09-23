@@ -28,6 +28,7 @@ data/*.db-*
 data/*.sqlite3
 data/*.json
 data/*.jsonl
+evals/results/*.json
 *.log
 
 # Docker bind-mount leftovers

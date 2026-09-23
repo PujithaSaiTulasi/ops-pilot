@@ -55,7 +55,7 @@ investigate: ## Run the agent investigation loop against open incidents
 	$(PY) -m opspilot.cli investigate
 
 eval: ## Run the evaluation suite
-	$(PY) -m opspilot.cli eval
+	$(PY) -m opspilot.cli eval --suite default
 
 approve: ## Approve an action (make approve APPROVAL_ID=APR-...)
 	$(PY) -m opspilot.cli approve --approval-id $(APPROVAL_ID)

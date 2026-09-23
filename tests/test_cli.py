@@ -40,9 +40,9 @@ def test_investigate_command_runs_mock_agent(capsys: pytest.CaptureFixture[str])
     assert '"events"' in output
 
 
-def test_eval_still_names_the_subcommand(
+def test_eval_command_runs_default_suite(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     main(["eval"])
-
-    assert "'eval'" in capsys.readouterr().err
+    output = capsys.readouterr().out
+    assert '"pass_rate"' in output
