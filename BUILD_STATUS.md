@@ -1,6 +1,6 @@
 # OpsPilot — Build Status
 
-**Last updated:** 2026-09-22 · **Current phase:** Phase 3 — Observability ✅ complete
+**Last updated:** 2026-09-22 · **Current phase:** Phase 4 — MCP servers ✅ complete
 
 > Rule of record: nothing is listed as "done" unless its tests/commands were
 > actually run and their results recorded under "Tests run".
@@ -89,6 +89,28 @@
 | `make test` | **42 passed** |
 | `make lint` | **ruff + format + mypy passed** |
 | `docker compose config --quiet` | **passed** |
+
+## Phase 4 — MCP servers
+
+### Completed
+
+- Local MCP server registry in `ops/mcp/servers.json`.
+- Read-only observability MCP server for metrics, logs, alerts, traces, and
+  baseline comparison.
+- Read-only deployment MCP server for deployment history, versions, and diffs.
+- Read-only runbook MCP server for checked-in incident guidance.
+- Approval-aware remediation MCP server for rollback, restart, and recovery
+  verification.
+- Incident MCP server for local incident records and comments.
+- Stdio entry points compatible with the installed MCP SDK.
+- MCP discovery and tool-call tests covering all server families.
+
+### Tests run
+
+| Command | Result |
+| --- | --- |
+| `make test` | **47 passed** |
+| `make lint` | **ruff + format + mypy passed** |
 
 ### Tests run
 
