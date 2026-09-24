@@ -23,6 +23,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       REDIS_URL: redis://redis:6379/0
+      SIMULATOR_STATE_PATH: /app/runtime/simulator.json
       SCENARIO_DIR: ${SCENARIO_DIR:-scenarios}
       ENABLE_METRICS: ${ENABLE_METRICS:-true}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-opspilot}
@@ -33,6 +34,8 @@ services:
         condition: service_healthy
       otel-collector:
         condition: service_started
+    volumes:
+      - simulator_state:/app/runtime
     restart: unless-stopped
 
   checkout:
@@ -54,12 +57,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       REDIS_URL: redis://redis:6379/0
+      SIMULATOR_STATE_PATH: /app/runtime/simulator.json
       PAYMENT_URL: http://payment:8000
       INVENTORY_URL: http://inventory:8000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
+    volumes:
+      - simulator_state:/app/runtime
     restart: unless-stopped
 
   payment:
@@ -76,10 +82,13 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       REDIS_URL: redis://redis:6379/0
+      SIMULATOR_STATE_PATH: /app/runtime/simulator.json
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
+    volumes:
+      - simulator_state:/app/runtime
     restart: unless-stopped
 
   inventory:
@@ -96,10 +105,13 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       REDIS_URL: redis://redis:6379/0
+      SIMULATOR_STATE_PATH: /app/runtime/simulator.json
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     depends_on:
       redis:
         condition: service_healthy
+    volumes:
+      - simulator_state:/app/runtime
     restart: unless-stopped
 
   # Shared simulator state for multi-process runs; approvals use a local JSON file.
@@ -158,3 +170,4 @@ services:
 
 volumes:
   promdata:
+  simulator_state:

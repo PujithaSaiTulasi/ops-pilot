@@ -71,7 +71,7 @@ def create_app(settings: Settings | None = None, fault_store: FaultStore | None 
     def inject(request: InjectRequest) -> dict[str, Any]:
         try:
             scenario = inject_scenario(request.scenario, store, app_settings.scenario_dir)
-        except KeyError as exc:
+        except (FileNotFoundError, ValueError, KeyError) as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         inject_counter.labels(request.scenario).inc()
         return {"status": "active", "scenario": scenario.model_dump(mode="json")}

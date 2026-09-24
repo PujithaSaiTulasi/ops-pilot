@@ -29,6 +29,27 @@ suite covering workflow quality and unauthorized-action prevention.
 - Recovery verification is independent of the diagnosis, but currently checks
   simulator state rather than real traffic and SLOs.
 
+## Challenges and architectural decisions
+
+- **Redis and disk storage:** “I found a problem in the way the simulator saved
+  its active incidents. Redis was the main place we used, and the JSON file on
+  disk was only used when Redis was unavailable. That meant the two copies could
+  become different. For example, if I cleared an incident while Redis was down,
+  the file would show that it was cleared, but Redis could still contain the old
+  incident. When Redis came back, that old incident might appear again. The
+  opposite could happen too: Redis might be empty even though the disk file
+  still had an active incident.
+
+  I fixed this by treating the disk file as a proper backup copy instead of a
+  last-minute fallback. Every change is saved to the file first, and then copied
+  to Redis. Each copy has a revision number, so when the application reads the
+  state it can tell which copy is newer and update the older one. The containers
+  also use the same persistent file, so they all see the same backup. This makes
+  Redis recovery predictable and prevents incidents from disappearing or coming
+  back because the two copies disagreed. It is still a simple local solution;
+  handling many simultaneous writers would need a transactional database or a
+  stronger locking mechanism.”
+
 ## Honest scope statement
 
 This is a portfolio-ready, production-shaped local system—not a production

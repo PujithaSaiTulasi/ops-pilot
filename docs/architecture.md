@@ -84,10 +84,13 @@ retention and multi-writer semantics.
 
 ## Simulator and future adapters
 
-The simulator stores active faults in Redis when configured, otherwise in a
-shared JSON state file. That file fallback allows separate stdio MCP processes
-to observe the same local incident. The observability server currently reads
-simulator state. The intended adapter seams are:
+The simulator stores active faults in Redis and maintains a versioned JSON state
+file as a durable mirror. Mutations write the file first and then refresh Redis;
+if Redis is unavailable, later reads continue from the file, and when Redis
+recovers the newest revision is copied back into it. This prevents an empty or
+stale Redis instance from silently hiding or resurrecting a local incident.
+Processes must use the same Redis instance and state-file path. The
+observability server currently reads simulator state. The intended adapter seams are:
 
 - `ObservabilityBackend` -> Prometheus, Loki, Tempo/Jaeger, and Alertmanager;
 - `DeploymentBackend` -> Kubernetes, Argo CD, or a deployment API;

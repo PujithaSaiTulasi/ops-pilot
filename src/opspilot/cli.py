@@ -72,7 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "inject":
         try:
             scenario = inject_scenario(args.scenario, store, get_settings().scenario_dir)
-        except KeyError as exc:
+        except (FileNotFoundError, ValueError, KeyError) as exc:
             print(str(exc), file=sys.stderr)
             return 2
         print(f"activated {scenario.scenario_id}: {scenario.title}")
@@ -121,7 +121,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result.model_dump(mode="json"), indent=2))
         return 0
     if args.command == "demo":
-        inject_scenario(args.incident, store, get_settings().scenario_dir)
+        try:
+            inject_scenario(args.incident, store, get_settings().scenario_dir)
+        except (FileNotFoundError, ValueError, KeyError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         workflow = RemediationWorkflow(get_settings(), store)
         prepared = workflow.prepare(args.incident)
         assert prepared.approval_id is not None

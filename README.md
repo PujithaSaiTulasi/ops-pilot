@@ -81,9 +81,11 @@ make approve APPROVAL_ID=APR-...
 make resume APPROVAL_ID=APR-...
 ```
 
-Redis shares faults across processes. Without a reachable Redis server, the
-configured `SIMULATOR_STATE_PATH` JSON file shares faults across the local MCP
-processes. Approvals and audit events are local files under `data/`.
+Redis shares faults across processes. The configured `SIMULATOR_STATE_PATH` JSON
+file is a versioned durable mirror: mutations are written there before Redis,
+and a later Redis recovery reconciles the newest revision back into Redis.
+Processes should use the same Redis instance and state-file path. Approvals and
+audit events are local files under `data/`.
 
 ## Local service stack
 
@@ -122,7 +124,7 @@ values are in [.env.example](.env.example).
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | Needed for live tool selection; live calls can incur costs |
 | `MCP_TRANSPORT` | `in_process` for tests or `stdio` for separate MCP child processes |
 | `MCP_SERVERS_PATH` | MCP server process manifest |
-| `REDIS_URL` | Shared simulator state; empty uses the configured JSON state file |
+| `REDIS_URL` | Shared simulator state; Redis is mirrored to the configured JSON state file |
 | `SIMULATOR_STATE_PATH` | Shared fallback state file for separate local processes |
 | `MAX_INVESTIGATION_STEPS` | Enforced investigation loop limit |
 | `APPROVAL_STORE_PATH` | Local JSON approval records with TTL and consumption state |
